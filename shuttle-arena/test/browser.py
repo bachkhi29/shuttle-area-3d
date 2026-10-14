@@ -1,0 +1,156 @@
+"""Chromium/WebGL integration + keyboard scenarios; no third-party services.
+Run: python test/browser.py (requires Python playwright and Chromium).
+Fixtures place the initial rally only; scoring always runs through the game tick.
+"""
+from pathlib import Path
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+from functools import partial
+from threading import Thread
+import json, os, traceback
+from playwright.sync_api import sync_playwright
+ROOT=Path(__file__).resolve().parents[2]
+OUT=Path(os.environ.get('QA_OUTPUT',str(ROOT/'work/qa')));OUT.mkdir(parents=True,exist_ok=True)
+class Handler(SimpleHTTPRequestHandler):
+ def log_message(self,*args): pass
+server=ThreadingHTTPServer(('127.0.0.1',0),partial(Handler,directory=str(ROOT)))
+Thread(target=server.serve_forever,daemon=True).start()
+BASE=f'http://127.0.0.1:{server.server_port}'
+results=[];errors=[]
+def check(name,fn):
+ try:
+  evidence=fn();results.append({'name':name,'status':'PASS','evidence':evidence});print('PASS',name,flush=True)
+ except Exception as e:
+  results.append({'name':name,'status':'FAIL','error':str(e)});print('FAIL',name,str(e),flush=True);traceback.print_exc()
+with sync_playwright() as pw:
+ browser=pw.chromium.launch(executable_path=os.environ.get('CHROMIUM','/usr/bin/chromium'),headless=True,args=['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
+ context=browser.new_context(viewport={'width':1440,'height':1050})
+ # Deterministic stepping instead of racing requestAnimationFrame.
+ context.add_init_script('window.requestAnimationFrame=()=>0')
+ page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
+ page.goto(BASE+'/shuttle-arena/index.html#qa');page.wait_for_function('!!window.__rally')
+ def run(js):return page.evaluate(js)
+ def fresh():
+  run("()=>{const q=__rally;q.startMatch('arcade11','inter');q.state.assist=true;q.state.aim=0;q.state.shotType='standard';q.state.keys.clear();q.state.held=false;q.draw()}")
+ def menu():
+  assert page.title().startswith('Shuttle Arena 3D');run('__rally.draw()');page.screenshot(path=str(OUT/'menu.png'))
+  page.locator('#beginMatch').click();assert run('__rally.match.active');assert page.locator('#matchOptions').is_hidden()
+ check('Menu starts accepted v0.6 runtime with local assets',menu)
+ def config():
+  fresh();c=run('__rally.config.match');assert c=={'interceptHeight':2.1,'errorOffset':{'side':1.1,'deep':2},'ai':{'speedCap':4.65,'reactionDelay':.22,'interceptNoise':.18}}
+  return c
+ check('Spec constants CONFIG.match',config)
+ def rally():
+  fresh();page.keyboard.down('Space');run('__rally.advance(24)');page.keyboard.up('Space');run('__rally.draw()')
+  c=run('__rally.state.contacts');assert len(c)>=8;assert all(x['quality']=='clean' for x in c)
+  assert {x['who'] for x in c}=={'ai','player'}
+  for x in c:assert x['gap']<=.7 and x['height']>=.9
+  page.screenshot(path=str(OUT/'rally.png'));return {'contacts':len(c),'first':c[0]}
+ check('Held Space + assist produces clean rallies for both actors',rally)
+ def reaction():
+  fresh();r=run('''()=>{const q=__rally,m=q.match,s=q.state,o=q.opponent;m.phase='RALLY';m.lastHitter='player';Object.assign(o,{x:0,z:-4.4,vx:0,vz:0});q.launch(q.V(0,1.75,4.4),q.V(1.65,.08,-4.9),'ai');const noise=m.aiNoise;for(let i=0;i<27;i++)q.tick(1/120);const before={x:o.x,z:o.z};q.tick(1/120);return {before,after:{x:o.x,z:o.z},noise,seed:s.seed}}''')
+  assert abs(r['before']['x'])<1e-12 and r['before']['z']==-4.4
+  assert r['after']['x']>0
+  return r
+ check('AI waits 0.22 simulated seconds before pursuing interception',reaction)
+ def noise():
+  js='''()=>{const q=__rally;q.startMatch();let out=[];for(let i=0;i<12;i++){q.match.phase='RALLY';const n=q.match.aiNoise,a=q.match.aiAim;let xs=[];for(let j=0;j<3;j++){q.launch(q.V(0,1.75,4.4),q.V(1,.08,-4.9),'ai');xs.push(q.state.ball.intercept.x)}out.push({id:q.match.rallyId,n,a,xs});q.pointEnd(i%2?'player':'ai','OUT');q.advance(1.21)}return out}'''
+  a=run(js);b=run(js);assert a==b
+  for x in a:assert abs(x['n'])<=.18 and len(set(x['xs']))==1
+  for i in range(1,len(a)):assert a[i]['a']!=a[i-1]['a']
+  assert {x['a'] for x in a[:3]}=={-1,0,1}
+  return a[:3]
+ check('Seeded noise stable per rally; replayable; aim cycles by rallyId',noise)
+ def speeds():
+  r=run('''()=>{const q=__rally;function measure(a){Object.assign(a,{x:0,z:a.side==='ai'?-4.4:4.4,vx:0,vz:0});let max=0,jump=0;for(let i=0;i<600;i++){let x=a.x,z=a.z;q.move(a,i<300?100:-100,a.z,1/120);max=Math.max(max,a.speed);jump=Math.max(jump,Math.hypot(a.x-x,a.z-z))}return {max,jump}}q.startMatch();let player=measure(q.player),ai=measure(q.opponent);q.startTraining();let training=measure(q.opponent);return{player,ai,training}}''')
+  for key in ['player','ai']:assert 4.64<r[key]['max']<=4.650000001 and r[key]['jump']<=4.65/120+1e-9
+  assert 5.59<r['training']['max']<=5.600000001
+  return r
+ check('Shared motor caps: player/Match AI 4.65; Training AI 5.6; no teleport',speeds)
+ def invalid_contact():
+  fresh();r=run('''()=>{const q=__rally,m=q.match,s=q.state;m.phase='RALLY';m.lastHitter='player';q.launch(q.V(0,1.75,4.4),q.V(0,.08,-4.9),'ai');const b=s.ball;let out=[];out.push(q.contact(q.player));Object.assign(q.opponent,{x:2.7,z:-.58});b.t=b.intercept.t;out.push(q.contact(q.opponent));b.t=b.T;out.push(q.contact(q.opponent));s.ball=null;out.push(q.contact(q.opponent));return {out,count:s.contacts.length}}''')
+  assert r=={'out':[False]*4,'count':0};return r
+ check('Shared resolver rejects wrong side, out of reach, grounded and absent shuttle',invalid_contact)
+ def late_out(aim):
+  fresh();page.locator('#assist').check();page.locator('#assist').uncheck();page.locator(f'[data-aim="{aim}"]').click()
+  run('''()=>{const q=__rally;q.match.phase='RALLY';q.match.lastHitter='ai';Object.assign(q.player,{x:.05,z:4.5,vx:0,vz:0});q.launch(q.V(0,1.75,-4.5),q.V(0,.08,4.5),'player')}''')
+  # Deliberately move off the marker using real keyboard events, then hit late.
+  page.keyboard.down('KeyD');run('__rally.advance(.1)');page.keyboard.up('KeyD')
+  condition=run('''()=>{const q=__rally;for(let i=0;i<400;i++){const b=q.state.ball;if(!b)return false;const p=q.sample(b,b.t);if(p.y<.85&&q.contactWindow(q.player,b))return true;q.tick(1/120)}return false}''');assert condition
+  page.keyboard.down('Space');run('__rally.tick(1/120)');page.keyboard.up('Space')
+  c=run('__rally.state.contacts.at(-1)');assert c['who']=='player' and c['quality']=='stretched';assert c['height']<.9 or c['gap']>.7
+  assert c['target']=={'x':aim*2.75 if aim else 0,'z':-4.9 if aim else -6.9}
+  run('''()=>{const q=__rally;for(let i=0;i<500&&q.match.phase==='RALLY';i++)q.tick(1/120);q.draw()}''')
+  r=run('({score:__rally.match.score,reason:__rally.match.lastReason,text:document.getElementById("cueDetail").textContent})')
+  assert r['score']=={'player':0,'ai':1};assert r['reason']=='Cầu ngoài sân';assert 'Cầu ngoài sân' in r['text']
+  page.screenshot(path=str(OUT/f'out-{aim}.png'));return {'contact':c,**r}
+ for a in [-1,0,1]:check(f'7.3 scenario 2: WASD off marker + late Space, aim {a}, OUT to AI',lambda a=a:late_out(a))
+ def ai_stretch():
+  fresh();r=run('''()=>{const q=__rally,m=q.match;m.phase='RALLY';m.lastHitter='player';q.launch(q.V(0,1.75,4.5),q.V(0,.08,-4.5),'ai');const b=q.state.ball;b.t=b.intercept.t;const p=q.sample(b,b.t);Object.assign(q.opponent,{x:p.x+.8,z:p.z,vx:0,vz:0});const accepted=q.contact(q.opponent);const c=q.state.contacts.at(-1);q.state.assist=false;Object.assign(q.player,{x:-2.7,z:.58,vx:0,vz:0});q.state.keys.clear();q.state.held=false;for(let i=0;i<500&&m.phase==='RALLY';i++)q.tick(1/120);return{accepted,c,score:m.score,reason:m.lastReason}}''')
+  assert r['accepted'];assert r['c']['quality']=='stretched';assert r['score']=={'player':1,'ai':0};assert r['reason']=='Cầu ngoài sân';return r
+ check('Symmetric AI stretched contact loses OUT point',ai_stretch)
+ def net(who):
+  fresh();r=page.evaluate("""who=>{const q=__rally,m=q.match;m.phase='RALLY';m.lastHitter=who;const z=who==='player'?1:-1;q.launch(q.V(0,.7,z),q.V(0,.08,-z),who==='player'?'ai':'player',{T:.2,fixedT:true});for(let i=0;i<80&&m.phase==='RALLY';i++)q.tick(1/120);q.draw();return{score:m.score,reason:m.lastReason,code:m.lastReasonCode,hud:document.getElementById('cueDetail').textContent}}""",who)
+  assert r['code']=='NET' and r['reason']=='Cầu chạm lưới' and 'Cầu chạm lưới' in r['hud']
+  assert r['score']==({'player':0,'ai':1} if who=='player' else {'player':1,'ai':0})
+  page.screenshot(path=str(OUT/f'net-{who}.png'));return r
+ for who in ['player','ai']:check(f'7.3 scenario 3: low trajectory into net from {who}',lambda who=who:net(who))
+ def pause():
+  fresh();page.keyboard.down('Space');run('__rally.advance(1)');page.keyboard.up('Space');page.keyboard.press('KeyP')
+  before=run('({clock:__rally.state.clock,t:__rally.state.ball.t,score:{...__rally.match.score}})');run('__rally.advance(3)');assert before==run('({clock:__rally.state.clock,t:__rally.state.ball.t,score:{...__rally.match.score}})')
+  page.keyboard.press('KeyP');run('__rally.advance(.1)');assert run('__rally.state.clock')>before['clock']
+  run("window.dispatchEvent(new Event('blur'))");assert not run('__rally.state.running')
+ check('Pause/resume and blur freeze simulation and timers',pause)
+ def duplicate():
+  fresh();r=run('''()=>{const q=__rally,m=q.match;m.phase='RALLY';const old=m.rallyId;q.pointEnd('player','FLOOR_IN',old);q.pointEnd('player','FLOOR_IN',old);q.advance(1.21);m.phase='RALLY';q.pointEnd('ai','NET',old);return{score:m.score,log:m.pointLog.length}}''');assert r=={'score':{'player':1,'ai':0},'log':1}
+ check('Duplicate and delayed rally terminal events cannot score twice',duplicate)
+ def fullmatch():
+  fresh();r=run('''()=>{const q=__rally,m=q.match,s=q.state;let seen=0;for(let i=0;i<120*600&&m.phase!=='MATCH_END';i++){if(m.phase==='PRE_SERVE')s.held=true;else s.held=m.rallyHits<6;if(s.contacts.length!==seen){seen=s.contacts.length;s.aim=seen%2?1:-1;s.shotType=['standard','drop','clear','smash'][seen%4]}q.tick(1/120)}q.draw();return{phase:m.phase,score:m.score,total:m.totalRallies,contacts:s.contacts.length,log:m.pointLog}}''')
+  assert r['phase']=='MATCH_END';assert r['total']==sum(r['score'].values());assert page.locator('#rematchBtn').is_visible()
+  page.screenshot(path=str(OUT/'match-end.png'))
+  for i in range(3):
+   page.locator('#rematchBtn').click();assert run('JSON.stringify(__rally.match.score)')=='{"player":0,"ai":0}'
+   assert run('__rally.match.server')=='player' and run('__rally.state.contacts.length')==0
+   if i<2:run("()=>{const q=__rally;q.match.phase='RALLY';q.match.score.player=10;q.pointEnd('player','FLOOR_IN');q.advance(1.3);q.draw()}")
+  return r
+ check('Full Arcade 11 match through actual simulation + three rematches',fullmatch)
+ # Compare deterministic Training trajectories with both original source versions.
+ def training_parity():
+  paths=['/Shuttle_Arena_3D_Rally_Lab_v0.3.html','/Shuttle_Arena_3D_v0.6_Package/Shuttle_Arena_3D_v0.6.html','/shuttle-arena/index.html']
+  snapshots=[]
+  for path in paths:
+   p=context.new_page();p.goto(BASE+path+'#qa');p.wait_for_function('!!window.__rally')
+   data=p.evaluate('''()=>{const q=__rally,output=[];for(const drill of ['center','wide','mixed'])for(const pace of [.8,1]){if(q.startTraining)q.startTraining();else q.reset();Object.assign(q.state,{drill,pace,assist:true,aim:0,held:true,shotType:'standard'});for(let i=0;i<120*60*pace;i++)q.tick(1/120);const s=q.state;output.push({drill,pace,hits:s.hits,drops:s.drops,feeds:s.feeds,seed:s.seed,contacts:s.contacts.map(c=>({who:c.who,gap:c.gap,height:c.height,netSide:c.netSide})),player:{x:q.player.x,z:q.player.z},ai:{x:q.opponent.x,z:q.opponent.z}})}return output}''')
+   snapshots.append(data);p.close()
+  assert snapshots[0]==snapshots[1]==snapshots[2]
+  return [{'drill':x['drill'],'pace':x['pace'],'hits':x['hits'],'drops':x['drops']} for x in snapshots[2]]
+ check('Training exact parity with v0.3 AND v0.6: 3 drills × 2 paces × 60s',training_parity)
+ def switches():
+  fresh();run("()=>{const q=__rally;q.match.phase='RALLY';q.pointEnd('ai','OUT');q.startTraining();q.advance(2);q.startMatch();q.draw()}")
+  assert run('__rally.state.hits+__rally.state.drops+__rally.state.contacts.length')==0
+  assert run('__rally.match.score.player+__rally.match.score.ai')==0
+  assert run('__rally.state.pace')==1
+ check('Training ↔ Match clears stats and restores Match pace',switches)
+ def v06_shots():
+  fresh();r=run('''()=>{const q=__rally;let o={};for(const type of ['clear','drop','smash']){q.state.shotType=type;const p=q.V(.2,2.5,2),sh=q.shotFor('player',p,0,0);q.launch(p,q.V(sh.end.x,.08,sh.end.z),'ai',sh.opt);o[type]={name:sh.name,end:sh.end,T:q.state.ball.T,net:q.netCrossY(q.state.ball,p)}}return o}''')
+  assert r['clear']['end']['z']==-5.95 and r['clear']['net']>1.95
+  assert r['drop']['end']['z']==-2.5 and r['drop']['T']<1.45
+  assert r['smash']['name']=='Smash' and r['smash']['T']==.5 and r['smash']['net']>1.58
+  return r
+ check('Accepted v0.6 Clear/Drop/Smash trajectories remain available',v06_shots)
+ def training_after_end():
+  fresh();run("()=>{const q=__rally;q.match.phase='RALLY';q.match.score.player=10;q.pointEnd('player','FLOOR_IN');q.advance(1.3);q.draw()}")
+  page.locator('#begin').click();page.keyboard.down('Space');run('__rally.advance(10)');page.keyboard.up('Space');assert run('__rally.state.hits')>0
+  page.keyboard.press('KeyP');assert page.locator('#welcomeTitle').inner_text()=='Trở lại sân đấu.';assert page.locator('#matchOptions').is_hidden()
+ check('Results → Training accepts Space; pause overlay shows correct controls',training_after_end)
+ def mobile():
+  page.set_viewport_size({'width':390,'height':844});run('__rally.draw()');page.screenshot(path=str(OUT/'narrow.png'),full_page=True)
+  assert run('document.documentElement.scrollWidth')<=390
+  page.set_viewport_size({'width':1440,'height':1050})
+ check('Narrow layout has no horizontal overflow',mobile)
+ def clean_console():assert not errors,errors
+ check('No JavaScript runtime exceptions in browser scenarios',clean_console)
+ browser.close()
+server.shutdown()
+(OUT/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
+print(json.dumps({'pass':sum(x['status']=='PASS' for x in results),'fail':sum(x['status']=='FAIL' for x in results),'output':str(OUT)},ensure_ascii=False))
+raise SystemExit(any(x['status']=='FAIL' for x in results))

@@ -26,13 +26,14 @@
       boxX: 1.30,           // ±1.30 cho ô phải/trái
       serviceTargetZ: 4.34  // trung điểm giữa vạch giao ngắn 1.98 và biên cuối 6.70
     },
+    match: {
+      interceptHeight: 2.10, // Match-only planned contact; Training stays at 1.58 m.
+      errorOffset: { side: 1.10, deep: 2.00 },
+      ai: { speedCap: 4.65, reactionDelay: 0.22, interceptNoise: 0.18 }
+    },
     contactQuality: {
       cleanGapMax: 0.70,    // gap <= 0.70
-      cleanHeightMin: 0.90, // y >= 0.90
-      errorOffset: {
-        side: 1.10,         // lệch thêm 1.10m ra phía biên
-        deep: 2.00          // lệch thêm 2.00m sâu về cuối sân
-      }
+      cleanHeightMin: 0.90 // y >= 0.90
     },
     pointReasons: {
       FLOOR_IN: { code: 'FLOOR_IN', text: 'Cầu rơi trong sân' },
@@ -58,7 +59,7 @@
    * Tính ô giao cầu và ô nhận cầu theo điểm số (Mục 4.4, 7.1.2)
    * serverScore: điểm hiện tại của người giao
    * serverSide: 'player' | 'ai'
-   * 
+   *
    * Quy ước:
    * Điểm chẵn (0, 2, 4...) -> ô phải
    * Điểm lẻ (1, 3, 5...)   -> ô trái
@@ -148,8 +149,20 @@
    * CỐ VỚI: ngược lại
    */
   function isCleanContact(gap, height) {
-    return (gap <= CONFIG.contactQuality.cleanGapMax + 1e-5) &&
-           (height >= CONFIG.contactQuality.cleanHeightMin - 1e-5);
+    return (gap <= CONFIG.contactQuality.cleanGapMax) &&
+           (height >= CONFIG.contactQuality.cleanHeightMin);
+  }
+
+  /** Contact is the record already appended to S.contacts. Aim is world-space X.
+   * Return a copy; never mutate the chosen target or the recorded measurement.
+   * v0.6 shot variants receive the same metre offsets on their own target.
+   */
+  function applyStretchedError(target, contact, aim, hitterSide) {
+    const result = { ...target };
+    if (isCleanContact(contact.gap, contact.height)) return result;
+    if (aim !== 0) result.x += Math.sign(aim) * CONFIG.match.errorOffset.side;
+    else result.z += (hitterSide === 'player' ? -1 : 1) * CONFIG.match.errorOffset.deep;
+    return result;
   }
 
   /**
@@ -186,17 +199,17 @@
       // Lệch thêm 1.10m ra phía biên đang nhắm
       if (hitterSide === 'player') {
         const sign = aim > 0 ? 1 : -1;
-        targetX = sign * (1.65 + CONFIG.contactQuality.errorOffset.side); // ±2.75
+        targetX = sign * (1.65 + CONFIG.match.errorOffset.side); // ±2.75
       } else {
         const sign = aim > 0 ? -1 : 1;
-        targetX = sign * (1.65 + CONFIG.contactQuality.errorOffset.side); // ∓2.75
+        targetX = sign * (1.65 + CONFIG.match.errorOffset.side); // ∓2.75
       }
     } else {
       // Nhắm giữa: lệch thêm 2.00m sâu về cuối sân
       if (hitterSide === 'player') {
-        targetZ = -4.90 - CONFIG.contactQuality.errorOffset.deep; // -6.90
+        targetZ = -4.90 - CONFIG.match.errorOffset.deep; // -6.90
       } else {
-        targetZ = 4.90 + CONFIG.contactQuality.errorOffset.deep;  // +6.90
+        targetZ = 4.90 + CONFIG.match.errorOffset.deep;  // +6.90
       }
     }
 
@@ -296,6 +309,7 @@
     isInSingles,
     isInSinglesSide,
     isCleanContact,
+    applyStretchedError,
     resolveShotTarget,
     resolvePointWinner,
     createPointManager

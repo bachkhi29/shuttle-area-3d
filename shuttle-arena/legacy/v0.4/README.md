@@ -1,0 +1,1 @@
+Các fragment v0.4 từ gói người dùng được giữ để tham khảo, không được nạp trong index.html. Runtime hiện tại ở ../../src/main.js, lấy trực tiếp từ v0.6. Test match.test.js ở đây chỉ kiểm tra bản v0.4 cũ; không dùng nó làm bằng chứng nghiệm thu v0.6.1.

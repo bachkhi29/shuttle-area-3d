@@ -1,6 +1,6 @@
 // test/match.test.js — Kiểm thử tích hợp logic trận đấu Quick Match Arcade 11
 const assert = require('assert');
-const Rules = require('../src/rules.js');
+const Rules = require('../../../src/rules.js');
 const Match = require('../src/match.js');
 
 console.log('--- Bắt đầu kiểm thử tích hợp Match Mode (Spec Mục 4 & 7) ---');
