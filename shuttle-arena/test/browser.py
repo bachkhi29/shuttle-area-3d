@@ -35,6 +35,23 @@ with sync_playwright() as pw:
   assert page.title().startswith('Shuttle Arena 3D');run('__rally.draw()');page.screenshot(path=str(OUT/'menu.png'))
   page.locator('#beginMatch').click();assert run('__rally.match.active');assert page.locator('#matchOptions').is_hidden()
  check('Menu starts accepted v0.6 runtime with local assets',menu)
+ def swipe_classifier():
+  r=run('''()=>{const q=__rally;return{short:q.classifySwipe(10,4,100),up:q.classifySwipe(50,-110,140),fastDown:q.classifySwipe(-55,120,120),held:q.classifySwipe(0,60,420),flat:q.classifySwipe(90,5,130)}}''')
+  assert r['short'] is None
+  assert (r['up']['aim'],r['up']['shot'])==(1,'clear')
+  assert (r['fastDown']['aim'],r['fastDown']['shot'])==(-1,'smash')
+  assert r['held']['aim']==0 and r['held']['shot']=='drop'
+  assert r['flat']['aim']==1 and r['flat']['shot']=='standard'
+  return r
+ check('Swipe classifier maps dead-zone, lane, direction and hold deterministically',swipe_classifier)
+ def pointer_swipe():
+  fresh();box=page.locator('#view').bounding_box();sx=box['x']+box['width']*.45;sy=box['y']+box['height']*.62
+  page.mouse.move(sx,sy);page.mouse.down();page.mouse.move(sx+85,sy-120,steps=5);page.mouse.up()
+  r=run("({aim:__rally.state.aim,shot:__rally.state.shotType,queued:__rally.state.queuedUntil>__rally.state.clock,gesture:__rally.state.lastGesture,feedback:document.getElementById('gestureFeedback').textContent})")
+  assert r['aim']==1 and r['shot']=='clear' and r['queued']
+  assert r['gesture']['aim']==1 and r['gesture']['shot']=='clear' and r['feedback']=='CLEAR · PHẢI'
+  return r
+ check('Real canvas pointer swipe creates one queued ShotCommand through the normal resolver',pointer_swipe)
  def config():
   fresh();c=run('__rally.config.match');assert c=={'interceptHeight':2.1,'errorOffset':{'side':1.1,'deep':2},'ai':{'speedCap':4.65,'reactionDelay':.22,'interceptNoise':.18}}
   return c
