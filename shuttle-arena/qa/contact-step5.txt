@@ -1,0 +1,35 @@
+✔ 7.1.4 player aim -1: clean including exact boundary (3.168198ms)
+✔ 7.1.4 player aim -1: stretched {"gap":0.70000001,"height":1.2} (0.184417ms)
+✔ 7.1.4 player aim -1: stretched {"gap":0.5,"height":0.89999999} (0.101378ms)
+✔ 7.1.4 player aim -1: stretched {"gap":0.8,"height":0.7} (0.145738ms)
+✔ 7.1.4 player aim 0: clean including exact boundary (0.186001ms)
+✔ 7.1.4 player aim 0: stretched {"gap":0.70000001,"height":1.2} (0.122465ms)
+✔ 7.1.4 player aim 0: stretched {"gap":0.5,"height":0.89999999} (9.626156ms)
+✔ 7.1.4 player aim 0: stretched {"gap":0.8,"height":0.7} (0.124341ms)
+✔ 7.1.4 player aim 1: clean including exact boundary (0.154144ms)
+✔ 7.1.4 player aim 1: stretched {"gap":0.70000001,"height":1.2} (0.202766ms)
+✔ 7.1.4 player aim 1: stretched {"gap":0.5,"height":0.89999999} (0.127283ms)
+✔ 7.1.4 player aim 1: stretched {"gap":0.8,"height":0.7} (0.074409ms)
+✔ 7.1.4 ai aim -1: clean including exact boundary (0.166822ms)
+✔ 7.1.4 ai aim -1: stretched {"gap":0.70000001,"height":1.2} (0.211139ms)
+✔ 7.1.4 ai aim -1: stretched {"gap":0.5,"height":0.89999999} (0.066648ms)
+✔ 7.1.4 ai aim -1: stretched {"gap":0.8,"height":0.7} (0.093399ms)
+✔ 7.1.4 ai aim 0: clean including exact boundary (0.174333ms)
+✔ 7.1.4 ai aim 0: stretched {"gap":0.70000001,"height":1.2} (0.060694ms)
+✔ 7.1.4 ai aim 0: stretched {"gap":0.5,"height":0.89999999} (0.092636ms)
+✔ 7.1.4 ai aim 0: stretched {"gap":0.8,"height":0.7} (1.265428ms)
+✔ 7.1.4 ai aim 1: clean including exact boundary (0.114467ms)
+✔ 7.1.4 ai aim 1: stretched {"gap":0.70000001,"height":1.2} (0.045049ms)
+✔ 7.1.4 ai aim 1: stretched {"gap":0.5,"height":0.89999999} (0.060843ms)
+✔ 7.1.4 ai aim 1: stretched {"gap":0.8,"height":0.7} (0.030988ms)
+✔ quality ignores travel, RNG roll and unrelated measurements (0.096671ms)
+✔ v0.6 Drop/Clear retain clean targets and receive metre offsets (0.119108ms)
+✔ error tuning has one source CONFIG.match.errorOffset (0.070097ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27.004993

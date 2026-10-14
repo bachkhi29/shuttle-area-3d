@@ -1,10 +1,20 @@
-// v0.6.1 — based on the accepted game_v06.js; Step 4 contact + Match AI.
+// v0.7 Match MVP — accepted v0.6 runtime + completed Spec v0.4 Steps 4–5.
 'use strict';
 (() => {
 const $=id=>document.getElementById(id),clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t;
+function startupError(message){
+ const intro=$('intro');
+ intro.textContent=message;
+ intro.className='error';
+ ['begin','beginMatch','rematchBtn'].forEach(id=>{const button=$(id);if(button)button.disabled=true});
+}
+if(typeof THREE==='undefined'){
+ startupError('Không tải được thư viện đồ họa Three.js. Hãy giữ nguyên thư mục vendor cạnh index.html hoặc tải lại trọn bộ game. Đây không phải lỗi WebGL của trình duyệt.');
+ return;
+}
 const V=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
 let renderer;
-try{renderer=new THREE.WebGLRenderer({canvas:$('view'),antialias:true,powerPreference:'high-performance'});}catch(e){$('intro').textContent='Trình duyệt chưa bật được WebGL. Hãy mở file bằng Chrome/Edge và bật tăng tốc đồ họa trong cài đặt trình duyệt.';$('intro').className='error';$('begin').disabled=true;return;}
+try{renderer=new THREE.WebGLRenderer({canvas:$('view'),antialias:true,powerPreference:'high-performance'});}catch(e){startupError('Không tạo được ngữ cảnh WebGL. Hãy mở game bằng Chrome/Edge hiện hành và kiểm tra tăng tốc đồ họa trong cài đặt trình duyệt.');return;}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#111e27');scene.fog=new THREE.Fog('#111e27',23,48);
 const camera=new THREE.PerspectiveCamera(43,1,.1,100);camera.position.set(.2,8.6,15.1);camera.lookAt(0,.15,0);
@@ -148,9 +158,9 @@ function tick(dt){if(!S.running)return;S.clock+=dt;
  if(M.active&&M.phase==='POINT_END'){move(player,0,4.4,dt);move(opponent,0,-4.4,dt);animateFeet(player,dt);animateFeet(opponent,dt);M.pointTimer-=dt;if(M.pointTimer<=0){if(M.matchOver){showResults()}else if(M.gameEnded){showGameResult()}else{startServeSetup()}}return}
  let k=S.keys,dx=(k.has('KeyD')||k.has('ArrowRight')?1:0)-(k.has('KeyA')||k.has('ArrowLeft')?1:0),dz=(k.has('KeyS')||k.has('ArrowDown')?1:0)-(k.has('KeyW')||k.has('ArrowUp')?1:0),n=Math.hypot(dx,dz);let target={x:player.x,z:player.z};if(n){target={x:player.x+dx/n,z:player.z+dz/n}}else if(S.assist){target=S.ball?.side==='player'?S.ball.intercept:{x:0,z:4.4};if(M.active&&S.ball?.side==='player'&&!isInSingles(S.ball.end.x,S.ball.end.z,1))target={x:0,z:4.4}}move(player,target.x,target.z,dt,!!n);let dest=S.ball?.side==='ai'?S.ball.intercept:{x:0,z:-4.4};if(M.active&&S.ball?.side==='ai'&&(S.ball.t<levelCfg().reaction||!isInSingles(S.ball.end.x,S.ball.end.z,-1)))dest={x:0,z:-4.4};move(opponent,dest.x,dest.z,dt);animateFeet(player,dt);animateFeet(opponent,dt);
  if(!S.ball){if(M.active){startServeSetup();return}S.wait-=dt;if(S.wait<=0)feed();return}let b=S.ball;b.previous.copy(sample(b,b.t));b.t+=dt;let p=sample(b,b.t);
- if(M.active&&b.side==='player'&&reachable(player,b))M.receiverInRange=true;
+ if(M.active&&((b.side==='player'&&reachable(player,b))||(b.side==='ai'&&reachable(opponent,b))))M.receiverInRange=true;
  if(b.previous.z*p.z<=0&&Math.abs(b.previous.z-p.z)>.00001){let fraction=Math.abs(b.previous.z)/(Math.abs(b.previous.z)+Math.abs(p.z));let h=lerp(b.previous.y,p.y,fraction);if(h<1.55){S.faults++;if(M.active){pointEnd(M.lastHitter==='player'?'ai':'player','NET')}else{drop('Cầu chạm lưới · chuẩn bị lại')}return}}
- if(b.side==='player'&&intent()&&contactWindow(player,b)){contact(player);return}if(b.side==='ai'&&contactWindow(opponent,b)&&(!M.active||isInSingles(b.end.x,b.end.z,-1))){contact(opponent);return}if(b.t>=b.T||p.y<=.09){if(M.active){const sideSign=b.side==='player'?1:-1;if(!isInSingles(b.end.x,b.end.z,sideSign)){pointEnd(b.side,'OUT')}else if(b.side==='player'){pointEnd('ai',M.receiverInRange?'WHIFF':'FLOOR_IN')}else{pointEnd('player','FLOOR_IN')}}else{drop(b.side==='player'?(intent()?'Cầu ngoài tầm với · tới vòng xanh nhạt':'Cầu rơi · giữ Space sớm hơn ở pha tới'):'Đối thủ chưa tới kịp · pha mới')}}
+ if(b.side==='player'&&intent()&&contactWindow(player,b)){contact(player);return}if(b.side==='ai'&&contactWindow(opponent,b)&&(!M.active||isInSingles(b.end.x,b.end.z,-1))){contact(opponent);return}if(b.t>=b.T||p.y<=.09){if(M.active){const sideSign=b.side==='player'?1:-1;if(!isInSingles(b.end.x,b.end.z,sideSign)){pointEnd(b.side,'OUT')}else{pointEnd(b.side==='player'?'ai':'player',M.receiverInRange?'WHIFF':'FLOOR_IN')}}else{drop(b.side==='player'?(intent()?'Cầu ngoài tầm với · tới vòng xanh nhạt':'Cầu rơi · giữ Space sớm hơn ở pha tới'):'Đối thủ chưa tới kịp · pha mới')}}
 }
 function animateFeet(a,dt){let moving=a.speed>.15;if(moving)a.phase+=dt*(1.8+a.speed*.25);let sign=a.side==='ai'?-1:1;for(let i=0;i<2;i++){let f=a.feet[i],phase=(a.phase+i*.5)%1,swing=moving&&phase<.48;let rest=V(a.x+sign*(i===0?-.19:.19),.06,a.z+(i===0?.06:-.06));if(swing&&!f.swing){f.from.copy(f.world);f.to.copy(rest).add(V(a.vx*.11,0,a.vz*.11))}if(swing){let u=phase/.48;f.world.copy(f.from).lerp(f.to,u*u*(3-2*u));f.world.y=.06+Math.sin(u*Math.PI)*.12}else if(!moving){f.world.lerp(rest,Math.min(1,dt*8));f.world.y=.06}else if(Math.hypot(f.world.x-a.x,f.world.z-a.z)>.62){f.world.copy(rest)}f.swing=swing;}}
 function renderActor(a){let group=a.group;group.position.set(a.x,0,a.z);group.updateMatrixWorld(true);let split=a.split>0?Math.sin(a.split/.2*Math.PI)*.055:0,hipY=.91-split,lean=Math.min(.10,a.speed*.013);a.torso.position.set(0,hipY+.31,-lean);a.torso.rotation.x=-lean;a.pelvis.position.set(0,hipY-.025,0);a.head.position.set(0,hipY+.84,-lean-.035);a.hair.position.set(0,hipY+.916,-lean-.025);setBone(a.neck,V(0,hipY+.57,-lean),V(0,hipY+.72,-lean));

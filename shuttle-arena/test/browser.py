@@ -103,6 +103,54 @@ with sync_playwright() as pw:
  def duplicate():
   fresh();r=run('''()=>{const q=__rally,m=q.match;m.phase='RALLY';const old=m.rallyId;q.pointEnd('player','FLOOR_IN',old);q.pointEnd('player','FLOOR_IN',old);q.advance(1.21);m.phase='RALLY';q.pointEnd('ai','NET',old);return{score:m.score,log:m.pointLog.length}}''');assert r=={'score':{'player':1,'ai':0},'log':1}
  check('Duplicate and delayed rally terminal events cannot score twice',duplicate)
+ def all_reasons():
+  cases=[
+   ('FLOOR_IN','player','player',False),
+   ('FLOOR_IN','ai','ai',False),
+   ('WHIFF','player','player',True),
+   ('WHIFF','ai','ai',True),
+  ]
+  output=[]
+  for reason,last_hitter,winner,receiver_seen in cases:
+   fresh();result=page.evaluate("""c=>{const q=__rally,m=q.match;m.phase='RALLY';m.lastHitter=c.lastHitter;const receiveSide=c.lastHitter==='player'?'ai':'player';const z=receiveSide==='player'?4.5:-4.5;const startZ=receiveSide==='player'?.8:-.8;q.launch(q.V(0,.7,startZ),q.V(0,.08,z),receiveSide,{T:.2,fixedT:true});m.receiverInRange=c.receiverSeen;q.state.assist=false;Object.assign(receiveSide==='player'?q.player:q.opponent,{x:2.7,z:receiveSide==='player'?.58:-.58,vx:0,vz:0});for(let i=0;i<80&&m.phase==='RALLY';i++)q.tick(1/120);return{code:m.lastReasonCode,text:m.lastReason,winner:m.lastWinner,score:{...m.score}}}""",{'lastHitter':last_hitter,'receiverSeen':receiver_seen})
+   assert result['code']==reason and result['winner']==winner
+   assert result['text']==('Cầu rơi trong sân' if reason=='FLOOR_IN' else 'Không đón kịp cầu')
+   output.append(result)
+  return output
+ check('FLOOR_IN and WHIFF reasons use exact text and award the last hitter',all_reasons)
+ def serve_rotation():
+  fresh();r=run('''()=>{const q=__rally,m=q.match,out=[];function snap(label){q.advance(m.server==='player'?1.6:.75);out.push({label,server:m.server,score:{...m.score},player:{x:q.player.x,z:q.player.z},ai:{x:q.opponent.x,z:q.opponent.z},phase:m.phase})}snap('player-even');m.phase='RALLY';m.lastHitter='ai';q.pointEnd('ai','FLOOR_IN');q.advance(1.21);snap('ai-odd');m.phase='RALLY';m.lastHitter='ai';q.pointEnd('ai','FLOOR_IN');q.advance(1.21);snap('ai-even');m.phase='RALLY';m.lastHitter='player';q.pointEnd('player','FLOOR_IN');q.advance(1.21);snap('player-odd');return out}''')
+  expected=[
+   ('player-even','player',1.30,5.0,-1.30,-4.5),
+   ('ai-odd','ai',-1.30,4.5,1.30,-5.0),
+   ('ai-even','ai',1.30,4.5,-1.30,-5.0),
+   ('player-odd','player',-1.30,5.0,1.30,-4.5),
+  ]
+  for item,e in zip(r,expected):
+   assert item['label']==e[0] and item['server']==e[1]
+   assert item['phase']=='PRE_SERVE'
+   assert abs(item['player']['x']-e[2])<.05 and abs(item['player']['z']-e[3])<.05
+   assert abs(item['ai']['x']-e[4])<.05 and abs(item['ai']['z']-e[5])<.05
+  return r
+ check('7.3 scenario 4: rally winner serves next; even/odd service boxes mirror correctly',serve_rotation)
+ def inherited_modes():
+  rulesets={'preview15':(15,21,2),'classic21':(21,30,2)};output={}
+  for ruleset,(target,cap,games) in rulesets.items():
+   run(f"__rally.startMatch('{ruleset}','rookie')")
+   cfg=run('({label:__rally.levelCfg().label,speed:__rally.levelCfg().speed,reaction:__rally.levelCfg().reaction,noise:__rally.levelCfg().noise})')
+   assert cfg['speed']==4.05 and cfg['reaction']==.60 and cfg['noise']==.40
+   for game in range(games):
+    run(f'''()=>{{const q=__rally,m=q.match;for(let i=0;i<{target};i++){{m.phase='RALLY';m.lastHitter='player';q.pointEnd('player','FLOOR_IN');if(i<{target-1})q.advance(1.21)}}q.advance(1.21)}}''')
+    if game<games-1:
+     assert run('__rally.match.phase')=='GAME_END';run('__rally.nextGame()')
+   assert run('__rally.match.phase')=='MATCH_END'
+   output[ruleset]=run('({games:{...__rally.match.games},score:{...__rally.match.score},phase:__rally.match.phase})')
+  run("__rally.startMatch('arcade11','expert')")
+  expert=run('({label:__rally.levelCfg().label,speed:__rally.levelCfg().speed,reaction:__rally.levelCfg().reaction,noise:__rally.levelCfg().noise})')
+  assert expert['speed']==4.65 and expert['reaction']==.18 and expert['noise']==.10
+  output['expert']=expert
+  return output
+ check('Inherited 15/21 best-of-three flow and Rookie/Expert parameters remain playable',inherited_modes)
  def fullmatch():
   fresh();r=run('''()=>{const q=__rally,m=q.match,s=q.state;let seen=0;for(let i=0;i<120*600&&m.phase!=='MATCH_END';i++){if(m.phase==='PRE_SERVE')s.held=true;else s.held=m.rallyHits<6;if(s.contacts.length!==seen){seen=s.contacts.length;s.aim=seen%2?1:-1;s.shotType=['standard','drop','clear','smash'][seen%4]}q.tick(1/120)}q.draw();return{phase:m.phase,score:m.score,total:m.totalRallies,contacts:s.contacts.length,log:m.pointLog}}''')
   assert r['phase']=='MATCH_END';assert r['total']==sum(r['score'].values());assert page.locator('#rematchBtn').is_visible()
@@ -147,6 +195,13 @@ with sync_playwright() as pw:
   assert run('document.documentElement.scrollWidth')<=390
   page.set_viewport_size({'width':1440,'height':1050})
  check('Narrow layout has no horizontal overflow',mobile)
+ def missing_vendor_message():
+  broken=context.new_page();broken.route('**/vendor/three.min.js',lambda route:route.abort())
+  broken.goto(BASE+'/shuttle-arena/index.html');broken.wait_for_load_state('domcontentloaded')
+  message=broken.locator('#intro').inner_text();disabled=[broken.locator('#begin').is_disabled(),broken.locator('#beginMatch').is_disabled()]
+  assert 'Three.js' in message and 'không phải lỗi WebGL' in message and all(disabled)
+  broken.close();return {'message':message,'launchButtonsDisabled':disabled}
+ check('Missing/corrupt Three.js reports packaging error instead of blaming WebGL',missing_vendor_message)
  def clean_console():assert not errors,errors
  check('No JavaScript runtime exceptions in browser scenarios',clean_console)
  browser.close()

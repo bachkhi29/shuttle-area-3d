@@ -1,0 +1,24 @@
+--- Bắt đầu kiểm thử tự động rules.js (Spec Mục 7.1) ---
+  PASS: 7.1.1 winsMatch: 11-9 là thắng
+  PASS: 7.1.1 winsMatch: 11-10 là chưa thắng
+  PASS: 7.1.1 winsMatch: 12-10 là thắng
+  PASS: 7.1.1 winsMatch: 10-12 là không thắng (đối xứng)
+  PASS: 7.1.1 winsMatch: 14-13 là chưa thắng
+  PASS: 7.1.1 winsMatch: 15-14 là thắng theo cap 15
+  PASS: 7.1.1 winsMatch: 15-14 là tỉ số duy nhất chạm cap
+  PASS: 7.1.2 serveBox: Người chơi giao điểm chẵn 0, 2, 4 -> ô phải, receiver chéo
+  PASS: 7.1.2 serveBox: Người chơi giao điểm lẻ 1, 3, 5 -> ô trái, receiver chéo
+  PASS: 7.1.2 serveBox: AI giao điểm chẵn 0, 2, 4 -> ô phải (x = -1.30 theo view AI)
+  PASS: 7.1.2 serveBox: AI giao điểm lẻ 1, 3, 5 -> ô trái (x = 1.30 theo view AI)
+  PASS: 7.1.3 isInSingles: (±2.59, ±6.70) là trong (chạm vạch = trong)
+  PASS: 7.1.3 isInSingles: (±2.60, 4.0) là ngoài
+  PASS: 7.1.3 isInSingles: (0, 6.71) là ngoài
+  PASS: 7.1.3 isInSinglesSide: Điểm rơi sai phía z không tính là rơi trong sân của phía đó
+  PASS: 7.1.4 Contact Quality: Contact sạch (gap <= 0.70 & height >= 0.90) -> đích không đổi
+  PASS: 7.1.4 Contact Quality: Cố với + nhắm biên -> đích x = ±2.75 (OUT biên > 2.59)
+  PASS: 7.1.4 Contact Quality: Cố với + nhắm giữa -> đích z = -6.90 (OUT cuối sân < -6.70)
+  PASS: 7.1.4 Contact Quality: Đối xứng cho AI khi cố với
+  PASS: 7.1.5 Idempotent: pointEnd gọi 2 lần với cùng rallyId -> điểm chỉ tăng một lần
+───────────────────────────────────────────────────────
+Kết quả: 20 passed, 0 failed.
+TẤT CẢ UNIT TESTS CHO rules.js ĐÃ PASS 100%!

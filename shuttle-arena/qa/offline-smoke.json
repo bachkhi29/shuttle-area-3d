@@ -1,0 +1,7 @@
+{
+  "single_file_real_animation": "PASS",
+  "normal_mode_qa_disabled": "PASS",
+  "no_remote_requests": "PASS",
+  "runtime_errors": [],
+  "direct_file_url": "NOT TESTED: managed browser ERR_BLOCKED_BY_ADMINISTRATOR; single-file bundle tested through loopback HTTP"
+}
