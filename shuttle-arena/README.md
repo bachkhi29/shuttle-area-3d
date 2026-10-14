@@ -1,75 +1,53 @@
-# Shuttle Arena 3D — Phiên bản v0.4: Quick Match Arcade 11
+# Shuttle Arena 3D v0.6.1 — Bước 4 / Spec v0.4
 
-Trò chơi cầu lông 3D WebGL chạy offline trên nền tảng Three.js và JavaScript thuần.
+Mở **`index.html`** bằng Chrome/Edge để chơi offline. Không cần npm, build, backend hay API key. Toàn bộ Three.js r160 được đóng gói tại `vendor/three.min.js`.
 
-## 1. Cách chạy trò chơi
-- **Cách đơn giản nhất:** Mở trực tiếp file `index.html` bằng trình duyệt web (Google Chrome, Microsoft Edge, Brave,... hỗ trợ WebGL tăng tốc đồ họa).
-- **Hoặc chạy qua static server local:**
-  ```bash
-  npx serve .
-  # hoặc: python -m http.server 8000
-  ```
-- **Chế độ kiểm thử (QA Hook):** Thêm `#qa` vào cuối URL (ví dụ `index.html#qa`) để mở quyền truy cập `window.__rally` (phơi state, rules, match state machine, và hàm `advance(seconds)` phục vụ test tự động).
+Gói một-file đã chạy qua server nội bộ, không cần tải tài nguyên ngoài. Đường mở `file://` chưa xác minh trong môi trường này vì chính sách Chromium quản lý chặn; nếu máy ông có chính sách tương tự, dùng server local bên dưới.
 
----
+Nếu muốn dùng server local: `python -m http.server 8000` trong thư mục này, rồi mở `http://127.0.0.1:8000`.
 
-## 2. Các chế độ chơi trong v0.4
-1. **Đấu nhanh (Quick Match — MỚI ở v0.4):**
-   - Ruleset: **Arcade 11** (luật riêng của game: tới 11 điểm, cách 2 điểm, tối đa 15 điểm).
-   - Luật tính điểm Rally Scoring: thắng pha cầu = được 1 điểm và được giao cầu ở pha tiếp theo.
-   - Giao cầu chẵn/lẻ: điểm chẵn giao ô phải, điểm lẻ giao ô trái, người nhận đứng ở ô chéo đối diện.
-   - Thanh tỉ số truyền hình thể thao: hiển thị điểm hai bên, chấm đèn xác định người đang giao cầu, thông tin rally.
-   - Cơ chế đánh lỗi khi cố với (Contact Quality): đứng sai vị trí hoặc vung vợt muộn khiến bóng bay ra ngoài biên (`OUT`).
-   - AI Match "Thường": tốc độ di chuyển 4.65 m/s (cân bằng với người chơi), phản xạ trễ 0.22s, có sai số đón cầu ngẫu nhiên có seed.
-   - Màn hình kết quả: hiển thị người chiến thắng, tỉ số chung cuộc, số pha rally, và nút Đấu lại (Rematch).
+## Bản nền và phạm vi
 
-2. **Luyện tập (Training — Giữ nguyên từ v0.3):**
-   - Đón và trả cầu liên tục, không tính điểm.
-   - 3 bài tập: Cầu giữa sân, Luân phiên hai bên, Di chuyển nhiều vị trí.
-   - 2 nhịp cầu: Chậm (0.8x) và Bình thường (1.0x).
-   - Thống kê buổi tập: Số cú đánh trúng, số lần để cầu rơi, tỉ lệ đón cầu thành công, chuỗi rally tốt nhất.
+Runtime phát triển trực tiếp từ `Shuttle_Arena_3D_v0.6_Package/game_v06.js` ông đã chơi thử; không lấy runtime v0.4 cũ làm nền. `index.html` là điểm mở bản mới. Gói v0.6 và hai baseline v0.3 trong dự án được giữ nguyên để đối chiếu. Các fragment v0.4 không còn được nạp đã chuyển vào `legacy/v0.4/`.
 
----
+Giữ Three.js/JavaScript, sân, camera, nhân vật procedural, vật lý DRAG=0.35, GRAVITY=9.81, fixed timestep=1/120, ba luật 11/15/21, ba mức AI và Shot System của v0.6. Chưa deploy/push repo; chưa làm rig/mocap/GLB hoặc P1.
 
-## 3. Điều khiển (LOCKED — Giữ nguyên trải nghiệm v0.3)
-- **Giữ `Space` / Giữ nút `Touch`:** Canh đánh trả hoặc phát cầu khi đến lượt.
-- **`W A S D` hoặc các phím mũi tên `↑ ↓ ← →`:** Di chuyển nhân vật (WASD luôn ưu tiên ghi đè chế độ tự động di chuyển).
-- **`Q`:** Đổi hướng đánh sang **Trái**.
-- **`C`:** Đổi hướng đánh vào **Giữa**.
-- **`E`:** Đổi hướng đánh sang **Phải**.
-- **`P`:** Tạm dừng / Tiếp tục trận đấu.
+## Điều khiển
 
----
+- Giữ **Space**: đánh/giao; **WASD/mũi tên** ghi đè hỗ trợ di chuyển.
+- **Q/C/E** hoặc nút: trái/giữa/phải.
+- **J/K/L**: chọn Drop/Clear/Smash (không đủ điều kiện Smash thì Drive); K cũng có thể khởi phát ý định đánh như v0.6.
+- **P/Esc**: tạm dừng. Mất focus cũng dừng.
+- **Đổi chế độ**: về menu; **Đấu lại**: reset trận.
 
-## 4. Cấu trúc mã nguồn
-```
-shuttle-arena/
-  index.html            ← Khung HTML, canvas 3D, overlay và TV scoreboard
-  styles.css            ← Giao diện Dark theme, bảng tỉ số, panel điều khiển
-  vendor/
-    three.min.js        ← Thư viện Three.js r160 nhúng sẵn
-  src/
-    rules.js            ← Hàm thuần cho Arcade 11, serveBox, isInSingles, error offset
-    match.js            ← State machine trận đấu, giao cầu, phân định điểm, AI Match
-    main.js             ← Vòng lặp chính, fixed timestep 1/120, điều phối Training & Match
-    court.js            ← Dựng sân đấu, lưới, ghế ngồi khán đài
-    actors.js           ← Dựng nhân vật procedural 3D, xương, hoạt ảnh chân
-    shuttle.js          ← Vật lý quả cầu (DRAG=0.35, GRAVITY=9.81, trajectory solver)
-    training.js         ← Khởi phát bóng và thống kê chế độ Training
-    hud.js              ← Cập nhật HUD
-    input.js            ← Xử lý bàn phím và cảm ứng
-  test/
-    rules.test.js       ← Unit test tự động 20/20 PASS cho rules.js (Mục 7.1)
-    match.test.js       ← Integration test tự động 5/5 PASS cho match.js
-  BASELINE_v0.3_DO_NOT_EDIT.html   ← File gốc đối chiếu v0.3 (không sửa)
-  README.md             ← Hướng dẫn sử dụng và tài liệu kỹ thuật
+## Contact và AI
+
+`src/rules.js` là module thuần, chạy trong browser và Node:
+
+- `isCleanContact(gap,height)`: đúng ngưỡng `gap <= 0.70 && height >= 0.90`, không cộng dung sai mở rộng.
+- `applyStretchedError(target,contact,aim,hitterSide)`: đọc `gap/height` từ record vừa ghi vào `S.contacts`, trả bản sao target. Aim ở API này là hướng ngang theo tọa độ thế giới; AI đổi dấu từ hướng nhìn của nó trước khi gọi.
+- `CONFIG.match.errorOffset = {side:1.10, deep:2.00}`. Cú tiêu chuẩn cố với rơi x=±2.75 hoặc z=∓6.90. Với J/K/L, cộng cùng số mét vào đích riêng của cú đã chọn: Drop không nhất thiết OUT, Clear giữa cố với tới |z|=7.95.
+- `CONFIG.match.ai = {speedCap:4.65, reactionDelay:0.22, interceptNoise:0.18}` cho mức Thường ở Match. Nhiễu dùng `rnd()/S.seed`, lấy một lần mỗi rally, không bốc lại mỗi cú. Hướng AI tuần hoàn trái/giữa/phải theo rallyId, thứ tự bắt đầu lấy từ seed.
+- Hai bên dùng cùng `move`, `range`, `reachable`, `contactWindow`, `contact` và bộ giải cú đánh. Không đánh cầu quá hạn bay, chạm đất, sai lượt hoặc ngoài tầm.
+- Match chờ thời điểm intercept thay vì đánh ngay ở mép tầm với. Độ cao lập điểm đón Match là 2.10 m để còn hỗ trợ cú đánh trên cao; Training vẫn là 1.58 m. Đây là điều chỉnh tích hợp có giải thích trong báo cáo, không phải thay ngưỡng phân loại sạch/cố với.
+- Training giữ tốc độ AI 5.6 m/s, không áp lỗi contact hoặc phản xạ/nhiễu của Match. Cú tiêu chuẩn đã đối chiếu trạng thái mô phỏng chính xác với cả v0.3 và v0.6, cả 3 bài × 2 nhịp.
+
+## Kiểm thử
+
+```sh
+node test/rules.test.js
+node test/contact.test.js
+python test/browser.py
 ```
 
----
+Browser test cần Python `playwright` và Chromium (mặc định `/usr/bin/chromium`; đổi qua biến `CHROMIUM`). Tự mở server chỉ trên `127.0.0.1`, không công bố ra Internet. Đặt `QA_OUTPUT` nếu muốn đổi thư mục bằng chứng. Bộ parity cần giữ các file baseline ở thư mục cha như trong ZIP bàn giao.
 
-## 5. Giới hạn đã biết của v0.4 (Known Limitations)
-- **Kiểu giao cầu:** v0.4 áp dụng 1 kiểu giao cầu duy nhất là giao cao sâu (flick-style), rơi vào ô nhận chéo hợp lệ.
-- **Lỗi giao cầu:** Chưa có luật lỗi giao cầu phức tạp của trọng tài (ngoài lỗi cầu chạm lưới khi giao).
-- **Mô hình nhân vật:** Nhân vật được dựng hoàn toàn bằng hình học lập trình (procedural code-built), chưa phải animation 3D mocap/rigging.
-- **Mức AI:** Một mức độ khó duy nhất là "Thường" (Intermediate-lite).
-- **Ruleset:** Chỉ áp dụng ruleset Arcade 11 (thắng ở 11 điểm, cách 2, trần 15 điểm).
+Mở `index.html#qa` để dùng `window.__rally`; thêm `?manual=1#qa` để chỉ advance bằng hook, vẫn render. Hook có state, match, config, rules, tick/advance, actors, range/reachable/contact, launch/trajectory, motor, startMatch/startTraining. Chế độ bình thường không phơi hook.
+
+Browser test thao tác WASD/Space cho kịch bản OUT; ca NET dùng fixture quỹ đạo thấp qua hook để đi qua detector/cộng điểm/HUD thật, vì solver gameplay tự hỗ trợ vượt lưới. Mô phỏng trọn trận chủ động bỏ lỡ sau 6 cú mỗi rally để xác minh kết thúc; kết quả không phải benchmark cân bằng AI.
+
+## Giới hạn
+
+Bản thử nhân vật dựng bằng code, không phải animation đã qua gate M1. Một kiểu giao cao sâu; chưa mô phỏng đầy đủ serve fault/BWF/đổi sân. Arcade 11 là luật riêng: tới 11, cách 2, cap 15. Các chế độ 15/21 và Dễ/Khó kế thừa v0.6; lần này không nghiệm thu lại toàn bộ phạm vi đó. Chưa benchmark GPU máy người dùng hay tự nhận game hoàn chỉnh.
+
+Chi tiết PASS/FAIL, sai khác và kế hoạch Bước 5: `STEP4_REPORT.md`.
