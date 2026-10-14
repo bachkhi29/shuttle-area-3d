@@ -2,7 +2,7 @@
 
 Mở **`index.html`** bằng Chrome/Edge để chơi offline. Không cần npm, build, backend hay API key. Toàn bộ Three.js r160 được đóng gói tại `vendor/three.min.js`.
 
-File chính một trang `Shuttle_Arena_3D_v0.7_MATCH_MVP.html` không tải tài nguyên ngoài. Bản source `index.html` dùng ba file local bên cạnh; nếu di chuyển riêng `index.html`, game sẽ báo đúng lỗi thiếu Three.js thay vì báo nhầm WebGL.
+Gói bàn giao cục bộ có file một trang `Shuttle_Arena_3D_v0.7_MATCH_MVP.html` không tải tài nguyên ngoài. Để tạo lại từ nhánh GitHub, chạy `python tools/build_offline.py ../Shuttle_Arena_3D_v0.7_MATCH_MVP.html`. Bản source `index.html` dùng ba file local bên cạnh; nếu di chuyển riêng `index.html`, game sẽ báo đúng lỗi thiếu Three.js thay vì báo nhầm WebGL.
 
 Nếu muốn dùng server local: `python -m http.server 8000` trong thư mục này, rồi mở `http://127.0.0.1:8000`.
 
