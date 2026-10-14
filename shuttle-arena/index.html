@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Shuttle Arena 3D · Quick Match v0.4</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="brand">SHUTTLE ARENA <span>3D</span></div>
+  <div class="tag" id="modeTag">QUICK MATCH · ARCADE 11</div>
+</header>
+<main class="app">
+  <div class="layout">
+    <section class="arena">
+      <canvas id="view" tabindex="0" aria-label="Sân cầu lông 3D, góc nhìn sau người chơi"></canvas>
+      <div class="top">
+        <!-- Training Top HUD -->
+        <div class="badge" id="trainingBadge" style="display:none;">TRAINING · AIM ASSIST</div>
+        <div class="counter" id="trainingCounter" style="display:none;">CHUỖI ĐÁNH TRẢ<b id="rally">0</b></div>
+
+        <!-- Quick Match Top Scoreboard (Spec Mục 4.8) -->
+        <div class="scoreboard" id="matchScoreboard">
+          <div class="score-side">
+            <span class="serve-dot active" id="playerServeDot" title="Bạn đang giao cầu"></span>
+            <span>BẠN</span>
+            <b class="score-val" id="playerScore">0</b>
+          </div>
+          <div class="score-mid">
+            <span class="score-divider">-</span>
+            <span class="rules-tag">ARCADE 11</span>
+          </div>
+          <div class="score-side">
+            <b class="score-val" id="aiScore">0</b>
+            <span>ĐỐI THỦ</span>
+            <span class="serve-dot" id="aiServeDot" title="Đối thủ đang giao cầu"></span>
+          </div>
+        </div>
+        <div class="counter" id="matchCounter">
+          RALLY #<b id="matchRallyNum">1</b>
+        </div>
+      </div>
+
+      <div class="cue" id="cue">
+        <strong id="cueTitle">Chuẩn bị giao cầu</strong>
+        <small id="cueDetail">Giữ Space để phát cầu cao sâu vào ô chéo đối diện.</small>
+      </div>
+
+      <div class="overlay" id="overlay">
+        <!-- Màn hình chọn chế độ / Bắt đầu (Spec Mục 4.1) -->
+        <div class="welcome" id="modeSelectScreen">
+          <div class="eyebrow">SHUTTLE ARENA 3D · v0.4</div>
+          <h1>Chọn chế độ chơi</h1>
+          <p id="intro">Trải nghiệm trận đấu 11 điểm kịch tính hoặc luyện tập căn thời điểm chạm cầu.</p>
+          
+          <div class="mode-cards">
+            <div class="mode-card featured" id="selectMatchCard">
+              <h3>ĐẤU NHANH (QUICK MATCH) <span>MỚI v0.4</span></h3>
+              <p>Luật Arcade 11: tới 11 điểm, cách 2, tối đa 15. Giao cầu chéo theo điểm chẵn/lẻ, AI độ khó Thường.</p>
+            </div>
+            <div class="mode-card" id="selectTrainingCard">
+              <h3>LUYỆN TẬP (TRAINING) <span>v0.3</span></h3>
+              <p>Tập đón và trả cầu liên tục, không tính điểm. 3 bài tập và 2 nhịp cầu.</p>
+            </div>
+          </div>
+
+          <button class="primary" id="begin">Vào trận đấu</button>
+        </div>
+
+        <!-- Màn hình kết quả trận đấu (Spec Mục 4.8) -->
+        <div class="result-card" id="matchEndScreen" style="display:none;">
+          <div class="eyebrow">KẾT QUẢ TRẬN ĐẤU · ARCADE 11</div>
+          <h1 id="matchResultTitle" class="win">CHIẾN THẮNG!</h1>
+          <div class="final-score" id="finalScoreText">11 - 9</div>
+          
+          <div class="result-stats">
+            <div>Tổng số rally<b id="finalTotalRallies">18</b></div>
+            <div>Rally dài nhất<b id="finalBestRally">7</b></div>
+          </div>
+
+          <div class="btn-group">
+            <button class="primary" id="rematchBtn">Đấu lại (Rematch)</button>
+            <button class="secondary" id="menuBtn">Về Menu</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <!-- Panel cho chế độ Quick Match -->
+      <div id="matchPanel">
+        <h2>CHẾ ĐỘ ĐẤU NHANH</h2>
+        <p class="help">Arcade 11 — luật riêng của game: tới 11, cách 2, tối đa 15.</p>
+        <p class="help" id="matchServeStatus" style="color:#d4f788;font-weight:600;">Lượt giao cầu: Bạn (ô phải)</p>
+        <div class="stats" style="margin-top:10px;">
+          <div class="stat"><b id="panelPlayerScore">0</b><span>Điểm của Bạn</span></div>
+          <div class="stat"><b id="panelAiScore">0</b><span>Điểm Đối thủ</span></div>
+          <div class="stat"><b id="panelRally">0</b><span>Pha qua lại</span></div>
+          <div class="stat"><b id="panelBestRally">0</b><span>Chuỗi dài nhất</span></div>
+        </div>
+      </div>
+
+      <!-- Panel cho chế độ Training (v0.3 giữ nguyên) -->
+      <div id="trainingPanel" style="display:none;">
+        <h2>HỖ TRỢ NGƯỜI CHƠI</h2>
+        <label class="switch">Tự tới vị trí đón cầu<input id="assist" type="checkbox" checked></label>
+        <p class="help">WASD luôn ưu tiên điều khiển của ông. Thả phím để nhân vật tiếp tục tự di chuyển.</p>
+        <label class="field">Bài tập<select id="drill">
+          <option value="center">Cầu giữa sân · làm quen</option>
+          <option value="wide">Luân phiên hai bên</option>
+          <option value="mixed">Di chuyển nhiều vị trí</option>
+        </select></label>
+        <label class="field">Nhịp cầu<select id="pace">
+          <option value="0.8">Chậm · dễ làm quen</option>
+          <option value="1">Bình thường</option>
+        </select></label>
+        
+        <h2 style="margin-top:16px;">BUỔI TẬP HIỆN TẠI</h2>
+        <div class="stats">
+          <div class="stat"><b id="hits">0</b><span>Đánh trúng</span></div>
+          <div class="stat"><b id="drops">0</b><span>Để cầu rơi</span></div>
+          <div class="stat"><b id="accuracy">—</b><span>Đón cầu thành công</span></div>
+          <div class="stat"><b id="best">0</b><span>Chuỗi tốt nhất</span></div>
+        </div>
+      </div>
+
+      <!-- Hướng đánh trả chung -->
+      <div>
+        <h2>HƯỚNG ĐÁNH TRẢ</h2>
+        <div class="aim">
+          <button data-aim="-1" aria-pressed="false">Trái</button>
+          <button data-aim="0" aria-pressed="true">Giữa</button>
+          <button data-aim="1" aria-pressed="false">Phải</button>
+        </div>
+        <p class="help">Chọn hướng trước khi đánh. Đứng sai vị trí hoặc giữ Space muộn sẽ khiến cầu bay lệch ngoài biên (OUT)!</p>
+      </div>
+
+      <!-- Nút chuyển nhanh chế độ -->
+      <div>
+        <h2>CHUYỂN CHẾ ĐỘ</h2>
+        <button class="mode-btn" id="switchModeBtn">Chuyển sang Luyện tập (Training)</button>
+      </div>
+
+      <div class="keys">
+        <h2>ĐIỀU KHIỂN</h2>
+        <kbd>Space</kbd> giữ để canh đánh / phát cầu<br>
+        <kbd>W A S D</kbd> / <kbd>↑ ↓ ← →</kbd> di chuyển<br>
+        <kbd>Q</kbd> trái · <kbd>E</kbd> phải · <kbd>C</kbd> giữa<br>
+        <kbd>P</kbd> tạm dừng
+      </div>
+    </aside>
+  </div>
+
+  <div class="actions">
+    <button id="pause">Tạm dừng</button>
+    <button id="reset">Chơi lại</button>
+    <button id="touchhit">Giữ để đánh</button>
+    <button id="audio" aria-pressed="false">Âm thanh: tắt</button>
+    <button id="fullscreen">Toàn màn hình</button>
+  </div>
+  <footer>
+    <span class="version">Shuttle Arena 3D v0.4</span> · Quick Match Arcade 11. Chạy WebGL offline. Giữ nguyên cảm giác điều khiển v0.3.
+  </footer>
+</main>
+
+<!-- Three.js r160 · MIT License -->
+<script src="vendor/three.min.js"></script>
+<!-- Pure game rules for Arcade 11 -->
+<script src="src/rules.js"></script>
+<!-- Match mode manager -->
+<script src="src/match.js"></script>
+<!-- Main game loop & training mode -->
+<script src="src/main.js"></script>
+
+</body>
+</html>
