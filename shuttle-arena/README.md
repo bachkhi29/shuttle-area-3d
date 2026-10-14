@@ -1,8 +1,8 @@
-# Shuttle Arena 3D v0.7 — Match MVP / Hoàn tất Bước 5 Spec v0.4
+# Shuttle Arena 3D v1.0 — Official MVP
 
 Mở **`index.html`** bằng Chrome/Edge để chơi offline. Không cần npm, build, backend hay API key. Toàn bộ Three.js r160 được đóng gói tại `vendor/three.min.js`.
 
-Gói bàn giao cục bộ có file một trang `Shuttle_Arena_3D_v0.7_MATCH_MVP.html` không tải tài nguyên ngoài. Để tạo lại từ nhánh GitHub, chạy `python tools/build_offline.py ../Shuttle_Arena_3D_v0.7_MATCH_MVP.html`. Bản source `index.html` dùng ba file local bên cạnh; nếu di chuyển riêng `index.html`, game sẽ báo đúng lỗi thiếu Three.js thay vì báo nhầm WebGL.
+Gói bàn giao cục bộ có file một trang `Shuttle_Arena_3D_v1.0_OFFICIAL_MVP.html` không tải tài nguyên ngoài. Để tạo lại từ nhánh GitHub, chạy `python tools/build_offline.py ../Shuttle_Arena_3D_v1.0_OFFICIAL_MVP.html`. Bản source `index.html` dùng ba file local bên cạnh; nếu di chuyển riêng `index.html`, game sẽ báo đúng lỗi thiếu Three.js thay vì báo nhầm WebGL.
 
 Nếu muốn dùng server local: `python -m http.server 8000` trong thư mục này, rồi mở `http://127.0.0.1:8000`.
 
@@ -10,7 +10,7 @@ Nếu muốn dùng server local: `python -m http.server 8000` trong thư mục n
 
 Runtime phát triển trực tiếp từ `Shuttle_Arena_3D_v0.6_Package/game_v06.js` ông đã chơi thử; không lấy runtime v0.4 cũ làm nền. `index.html` là điểm mở bản mới. Gói v0.6 và hai baseline v0.3 trong dự án được giữ nguyên để đối chiếu. Các fragment v0.4 không còn được nạp đã chuyển vào `legacy/v0.4/`.
 
-Giữ Three.js/JavaScript, sân, camera, nhân vật procedural, vật lý DRAG=0.35, GRAVITY=9.81, fixed timestep=1/120, ba luật 11/15/21, ba mức AI và Shot System của v0.6. Match MVP đã qua QA Bước 5; chưa làm rig/mocap/GLB hoặc các tính năng P1 Replay/History/Graphics Presets.
+Đây là bản phát hành chính thức ở phạm vi MVP: Quick Match, Training, ba luật, ba mức AI và Shot System chơi trọn vẹn. Giữ Three.js/JavaScript, vật lý DRAG=0.35, GRAVITY=9.81 và fixed timestep=1/120. Cài đặt người chơi được lưu cục bộ bằng schema `shuttle-arena.settings.v1`. Rig/mocap/GLB và các tính năng P1 Replay/History/Graphics Presets thuộc bản nâng cấp sau.
 
 ## Điều khiển
 
@@ -42,7 +42,7 @@ python test/browser.py
 
 Browser test cần Python `playwright` và Chromium (mặc định `/usr/bin/chromium`; đổi qua biến `CHROMIUM`). Tự mở server chỉ trên `127.0.0.1`, không công bố ra Internet. Đặt `QA_OUTPUT` nếu muốn đổi thư mục bằng chứng. Bộ parity cần giữ các file baseline ở thư mục cha như trong ZIP bàn giao.
 
-Kết quả phát hành v0.7: rules `20/20`, contact `27/27`, browser/integration `26/26`, tất cả PASS. Browser suite bao phủ đủ bảy kịch bản Mục 7.3, bốn lý do điểm, ô giao chẵn/lẻ hai phía, trận 11 điểm, luồng best-of-three 15/21, ba mức AI, ba rematch, chuyển Match/Training và lỗi gói Three.js.
+Kết quả phát hành v1.0: rules `20/20`, contact `27/27`, browser/integration `27/27`, tất cả PASS. Browser suite bao phủ đủ bảy kịch bản Mục 7.3, bốn lý do điểm, ô giao chẵn/lẻ hai phía, trận 11 điểm, luồng best-of-three 15/21, ba mức AI, ba rematch, chuyển Match/Training, lỗi gói Three.js và lưu/khôi phục cài đặt.
 
 Mở `index.html#qa` để dùng `window.__rally`; thêm `?manual=1#qa` để chỉ advance bằng hook, vẫn render. Hook có state, match, config, rules, tick/advance, actors, range/reachable/contact, launch/trajectory, motor, startMatch/startTraining. Chế độ bình thường không phơi hook.
 
@@ -52,4 +52,4 @@ Browser test thao tác WASD/Space cho kịch bản OUT; ca NET dùng fixture qu�
 
 Bản thử nhân vật dựng bằng code, không phải animation đã qua gate M1. Một kiểu giao cao sâu; chưa mô phỏng đầy đủ serve fault/BWF/đổi sân. Arcade 11 là luật riêng: tới 11, cách 2, cap 15. Các chế độ 15/21 và Dễ/Khó kế thừa v0.6; lần này không nghiệm thu lại toàn bộ phạm vi đó. Chưa benchmark GPU máy người dùng hay tự nhận game hoàn chỉnh.
 
-Chi tiết PASS/FAIL và sai khác: `STEP5_REPORT.md`. Báo cáo `STEP4_REPORT.md` được giữ làm lịch sử triển khai.
+Chi tiết phát hành: `OFFICIAL_RELEASE.md`. Các báo cáo `STEP4_REPORT.md` và `STEP5_REPORT.md` được giữ làm lịch sử triển khai.

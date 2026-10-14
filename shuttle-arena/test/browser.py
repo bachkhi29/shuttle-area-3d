@@ -202,6 +202,17 @@ with sync_playwright() as pw:
   assert 'Three.js' in message and 'không phải lỗi WebGL' in message and all(disabled)
   broken.close();return {'message':message,'launchButtonsDisabled':disabled}
  check('Missing/corrupt Three.js reports packaging error instead of blaming WebGL',missing_vendor_message)
+ def settings_persist():
+  run("localStorage.removeItem('shuttle-arena.settings.v1')")
+  page.reload();page.wait_for_function('!!window.__rally')
+  page.locator('#assist').uncheck();page.locator('#drill').select_option('mixed');page.locator('#pace').select_option('1');page.locator('#rulesetSel').select_option('classic21');page.locator('#aiSel').select_option('expert');page.locator('#audio').click()
+  stored=run("JSON.parse(localStorage.getItem('shuttle-arena.settings.v1'))")
+  page.reload();page.wait_for_function('!!window.__rally')
+  restored=run("({assist:__rally.state.assist,sound:__rally.state.sound,drill:__rally.state.drill,pace:__rally.state.pace,ruleset:document.getElementById('rulesetSel').value,ai:document.getElementById('aiSel').value})")
+  assert stored['version']==1 and restored=={'assist':False,'sound':True,'drill':'mixed','pace':1,'ruleset':'classic21','ai':'expert'}
+  run("localStorage.removeItem('shuttle-arena.settings.v1')")
+  return restored
+ check('v1 settings persist with a versioned localStorage schema',settings_persist)
  def clean_console():assert not errors,errors
  check('No JavaScript runtime exceptions in browser scenarios',clean_console)
  browser.close()
