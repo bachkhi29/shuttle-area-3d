@@ -1,9 +1,9 @@
-# Shuttle Arena 3D v0.6.1
+# Shuttle Arena 3D v0.7 — Match MVP
 
 Giải nén vào một thư mục mới để giữ bản gốc của ông.
 
-- Chơi bản tải từ nhánh GitHub: mở **shuttle-arena/index.html**. File một trang `PLAY_v0.6.1.html` chỉ có trong gói bàn giao cục bộ, không cần để chạy source trên nhánh này.
-- Đọc kết quả: **shuttle-arena/STEP4_REPORT.md**.
+- Chơi bản source: mở **shuttle-arena/index.html**. Bản một file chính: **Shuttle_Arena_3D_v0.7_MATCH_MVP.html**.
+- Đọc kết quả cuối Bước 5: **shuttle-arena/STEP5_REPORT.md**. Báo cáo Bước 4 được giữ để truy vết.
 - Source đang chạy: **shuttle-arena/src/main.js** (phát triển từ game_v06.js) và **src/rules.js**.
 - Cách chạy test/build file đơn: **shuttle-arena/README.md**.
 - Gói **Shuttle_Arena_3D_v0.6_Package/** là baseline cũ giữ nguyên để so sánh, không phải điểm chạy bản mới.
