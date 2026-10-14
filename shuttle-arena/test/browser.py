@@ -1,4 +1,4 @@
-"""Chromium/WebGL integration + keyboard scenarios; no third-party services.
+"""Chromium/WebGL integration + mouse-only scenarios; no third-party services.
 Run: python test/browser.py (requires Python playwright and Chromium).
 Fixtures place the initial rally only; scoring always runs through the game tick.
 """
@@ -52,6 +52,24 @@ with sync_playwright() as pw:
   assert r['gesture']['aim']==1 and r['gesture']['shot']=='clear' and r['feedback']=='CLEAR · PHẢI'
   return r
  check('Real canvas pointer swipe creates one queued ShotCommand through the normal resolver',pointer_swipe)
+ def mouse_play():
+  fresh();box=page.locator('#view').bounding_box();cx=box['x']+box['width']*.5;cy=box['y']+box['height']*.53
+  page.mouse.click(cx,cy);run('__rally.advance(1.3)')
+  serve=run('({phase:__rally.match.phase,side:__rally.state.ball?.side,last:__rally.match.lastHitter})')
+  assert serve=={'phase':'RALLY','side':'ai','last':'player'}
+  fresh();run("()=>{const q=__rally;q.match.phase='RALLY';q.match.lastHitter='ai';q.launch(q.V(0,1.75,-4.5),q.V(0,.08,4.5),'player')}")
+  page.mouse.move(cx,cy);page.mouse.down();page.mouse.move(cx+70,cy+105,steps=6);page.mouse.up()
+  planned=run('({x:__rally.state.mouseShot.targetX,depth:__rally.state.mouseShot.depth,shot:__rally.state.shotType})')
+  assert planned['shot']=='smash' and 1<planned['x']<1.3
+  run("()=>{const q=__rally;for(let i=0;i<360&&!q.state.contacts.length;i++)q.tick(1/120)}")
+  result=run('({contacts:__rally.state.contacts,shot:__rally.state.lastShot,ball:__rally.state.ball&&{T:__rally.state.ball.T,vy:__rally.state.ball.v.y,startY:__rally.state.ball.start.y,endX:__rally.state.ball.end.x,net:__rally.netCrossY(__rally.state.ball,__rally.state.ball.start)}})')
+  assert result['contacts'] and result['contacts'][0]['who']=='player'
+  assert abs(result['contacts'][0]['target']['x']-planned['x'])<.001
+  assert abs(result['contacts'][0]['target']['z']+planned['depth'])<.001
+  assert result['shot'] in ['Smash','Drive','Lift']
+  assert result['ball'] and result['ball']['net']>=1.55 and result['ball']['vy']<3
+  return {'serve':serve,'planned':planned,'contact':result['contacts'][0],'shot':result['shot'],'flight':result['ball']}
+ check('Mouse click serves; down-right swipe aims continuously and resolves through real contact',mouse_play)
  def config():
   fresh();c=run('__rally.config.match');assert c=={'interceptHeight':2.1,'errorOffset':{'side':1.1,'deep':2},'ai':{'speedCap':4.65,'reactionDelay':.22,'interceptNoise':.18}}
   return c
@@ -63,12 +81,17 @@ with sync_playwright() as pw:
   return r
  check('M1 motion contract: split-step landing and overhead smash contact pose',motion_contract)
  def rally():
-  fresh();page.keyboard.down('Space');run('__rally.advance(24)');page.keyboard.up('Space');run('__rally.draw()')
+  fresh();run("()=>{const q=__rally;for(let i=0;i<24*120;i++){q.state.held=true;q.tick(1/120)}q.draw()}")
   c=run('__rally.state.contacts');assert len(c)>=8;assert all(x['quality']=='clean' for x in c)
   assert {x['who'] for x in c}=={'ai','player'}
   for x in c:assert x['gap']<=.7 and x['height']>=.9
   page.screenshot(path=str(OUT/'rally.png'));return {'contacts':len(c),'first':c[0]}
- check('Held Space + assist produces clean rallies for both actors',rally)
+ check('Assisted footwork produces clean extended rallies for both actors',rally)
+ def ai_attack_rallies(shot):
+  fresh();r=page.evaluate('''shot=>{const q=__rally,m=q.match,s=q.state;let aiOut=0,aiHits=0,stretched=0;for(let i=0;i<120*90;i++){s.held=true;s.shotType=shot;const before=m.pointLog.length;q.tick(1/120);if(m.pointLog.length>before){const p=m.pointLog.at(-1);if(p.reason==='OUT'&&p.hitter==='ai')aiOut++}}for(const c of s.contacts)if(c.who==='ai'){aiHits++;if(c.quality==='stretched')stretched++}return{aiOut,aiHits,stretched,rallies:m.totalRallies}}''',shot)
+  assert r['aiHits']>=12 and r['aiOut']==0 and r['stretched']==0
+  return r
+ for shot in ['drop','smash']:check(f'AI returns {shot} exchanges without repeated stretched OUT faults',lambda shot=shot:ai_attack_rallies(shot))
  def reaction():
   fresh();r=run('''()=>{const q=__rally,m=q.match,s=q.state,o=q.opponent;m.phase='RALLY';m.lastHitter='player';Object.assign(o,{x:0,z:-4.4,vx:0,vz:0});q.launch(q.V(0,1.75,4.4),q.V(1.65,.08,-4.9),'ai');const noise=m.aiNoise;for(let i=0;i<27;i++)q.tick(1/120);const before={x:o.x,z:o.z};q.tick(1/120);return {before,after:{x:o.x,z:o.z},noise,seed:s.seed}}''')
   assert abs(r['before']['x'])<1e-12 and r['before']['z']==-4.4
@@ -94,19 +117,15 @@ with sync_playwright() as pw:
   assert r=={'out':[False]*4,'count':0};return r
  check('Shared resolver rejects wrong side, out of reach, grounded and absent shuttle',invalid_contact)
  def late_out(aim):
-  fresh();page.locator('#assist').check();page.locator('#assist').uncheck();page.locator(f'[data-aim="{aim}"]').click()
-  run('''()=>{const q=__rally;q.match.phase='RALLY';q.match.lastHitter='ai';Object.assign(q.player,{x:.05,z:4.5,vx:0,vz:0});q.launch(q.V(0,1.75,-4.5),q.V(0,.08,4.5),'player')}''')
-  # Deliberately move off the marker using real keyboard events, then hit late.
-  page.keyboard.down('KeyD');run('__rally.advance(.1)');page.keyboard.up('KeyD')
-  condition=run('''()=>{const q=__rally;for(let i=0;i<400;i++){const b=q.state.ball;if(!b)return false;const p=q.sample(b,b.t);if(p.y<.85&&q.contactWindow(q.player,b))return true;q.tick(1/120)}return false}''');assert condition
-  page.keyboard.down('Space');run('__rally.tick(1/120)');page.keyboard.up('Space')
+  fresh();accepted=page.evaluate('''a=>{const q=__rally;q.match.phase='RALLY';q.match.lastHitter='ai';q.aim(a);q.state.shotType='standard';q.launch(q.V(0,1.75,-4.5),q.V(0,.08,4.5),'player');const b=q.state.ball;b.t=b.intercept.t;const p=q.sample(b,b.t);Object.assign(q.player,{x:p.x-.8,z:p.z,vx:0,vz:0});return q.contact(q.player)}''',aim)
+  assert accepted
   c=run('__rally.state.contacts.at(-1)');assert c['who']=='player' and c['quality']=='stretched';assert c['height']<.9 or c['gap']>.7
   assert c['target']=={'x':aim*2.75 if aim else 0,'z':-4.9 if aim else -6.9}
   run('''()=>{const q=__rally;for(let i=0;i<500&&q.match.phase==='RALLY';i++)q.tick(1/120);q.draw()}''')
   r=run('({score:__rally.match.score,reason:__rally.match.lastReason,text:document.getElementById("cueDetail").textContent})')
   assert r['score']=={'player':0,'ai':1};assert r['reason']=='Cầu ngoài sân';assert 'Cầu ngoài sân' in r['text']
   page.screenshot(path=str(OUT/f'out-{aim}.png'));return {'contact':c,**r}
- for a in [-1,0,1]:check(f'7.3 scenario 2: WASD off marker + late Space, aim {a}, OUT to AI',lambda a=a:late_out(a))
+ for a in [-1,0,1]:check(f'7.3 scenario 2: stretched contact, aim {a}, OUT to AI',lambda a=a:late_out(a))
  def ai_stretch():
   fresh();r=run('''()=>{const q=__rally,m=q.match;m.phase='RALLY';m.lastHitter='player';q.launch(q.V(0,1.75,4.5),q.V(0,.08,-4.5),'ai');const b=q.state.ball;b.t=b.intercept.t;const p=q.sample(b,b.t);Object.assign(q.opponent,{x:p.x+.8,z:p.z,vx:0,vz:0});const accepted=q.contact(q.opponent);const c=q.state.contacts.at(-1);q.state.assist=false;Object.assign(q.player,{x:-2.7,z:.58,vx:0,vz:0});q.state.keys.clear();q.state.held=false;for(let i=0;i<500&&m.phase==='RALLY';i++)q.tick(1/120);return{accepted,c,score:m.score,reason:m.lastReason}}''')
   assert r['accepted'];assert r['c']['quality']=='stretched';assert r['score']=={'player':1,'ai':0};assert r['reason']=='Cầu ngoài sân';return r
@@ -118,9 +137,9 @@ with sync_playwright() as pw:
   page.screenshot(path=str(OUT/f'net-{who}.png'));return r
  for who in ['player','ai']:check(f'7.3 scenario 3: low trajectory into net from {who}',lambda who=who:net(who))
  def pause():
-  fresh();page.keyboard.down('Space');run('__rally.advance(1)');page.keyboard.up('Space');page.keyboard.press('KeyP')
+  fresh();run('()=>{const q=__rally;q.arm();q.advance(1)}');page.locator('#pause').click()
   before=run('({clock:__rally.state.clock,t:__rally.state.ball.t,score:{...__rally.match.score}})');run('__rally.advance(3)');assert before==run('({clock:__rally.state.clock,t:__rally.state.ball.t,score:{...__rally.match.score}})')
-  page.keyboard.press('KeyP');run('__rally.advance(.1)');assert run('__rally.state.clock')>before['clock']
+  page.locator('#begin').click();run('__rally.advance(.1)');assert run('__rally.state.clock')>before['clock']
   run("window.dispatchEvent(new Event('blur'))");assert not run('__rally.state.running')
  check('Pause/resume and blur freeze simulation and timers',pause)
  def duplicate():
@@ -210,9 +229,9 @@ with sync_playwright() as pw:
  check('Accepted v0.6 Clear/Drop/Smash trajectories remain available',v06_shots)
  def training_after_end():
   fresh();run("()=>{const q=__rally;q.match.phase='RALLY';q.match.score.player=10;q.pointEnd('player','FLOOR_IN');q.advance(1.3);q.draw()}")
-  page.locator('#begin').click();page.keyboard.down('Space');run('__rally.advance(10)');page.keyboard.up('Space');assert run('__rally.state.hits')>0
-  page.keyboard.press('KeyP');assert page.locator('#welcomeTitle').inner_text()=='Trở lại sân đấu.';assert page.locator('#matchOptions').is_hidden()
- check('Results → Training accepts Space; pause overlay shows correct controls',training_after_end)
+  page.locator('#begin').click();run('()=>{const q=__rally;for(let i=0;i<1200;i++){q.state.held=true;q.tick(1/120)}q.draw()}');assert run('__rally.state.hits')>0
+  page.locator('#pause').click();assert page.locator('#welcomeTitle').inner_text()=='Trở lại sân đấu.';assert page.locator('#matchOptions').is_hidden()
+ check('Results → Training works with automatic footwork; pause overlay stays correct',training_after_end)
  def mobile():
   page.set_viewport_size({'width':390,'height':844});run('__rally.draw()');page.screenshot(path=str(OUT/'narrow.png'),full_page=True)
   assert run('document.documentElement.scrollWidth')<=390
@@ -228,11 +247,11 @@ with sync_playwright() as pw:
  def settings_persist():
   run("localStorage.removeItem('shuttle-arena.settings.v1')")
   page.reload();page.wait_for_function('!!window.__rally')
-  page.locator('#assist').uncheck();page.locator('#drill').select_option('mixed');page.locator('#pace').select_option('1');page.locator('#rulesetSel').select_option('classic21');page.locator('#aiSel').select_option('expert');page.locator('#audio').click()
+  page.locator('#drill').select_option('mixed');page.locator('#pace').select_option('1');page.locator('#rulesetSel').select_option('classic21');page.locator('#aiSel').select_option('expert');page.locator('#audio').click()
   stored=run("JSON.parse(localStorage.getItem('shuttle-arena.settings.v1'))")
   page.reload();page.wait_for_function('!!window.__rally')
   restored=run("({assist:__rally.state.assist,sound:__rally.state.sound,drill:__rally.state.drill,pace:__rally.state.pace,ruleset:document.getElementById('rulesetSel').value,ai:document.getElementById('aiSel').value})")
-  assert stored['version']==1 and restored=={'assist':False,'sound':True,'drill':'mixed','pace':1,'ruleset':'classic21','ai':'expert'}
+  assert stored['version']==1 and restored=={'assist':True,'sound':True,'drill':'mixed','pace':1,'ruleset':'classic21','ai':'expert'}
   run("localStorage.removeItem('shuttle-arena.settings.v1')")
   return restored
  check('v1 settings persist with a versioned localStorage schema',settings_persist)

@@ -36,3 +36,21 @@ select{background:#f5fcff;color:#17455a;border-color:#a9d4df;box-shadow:0 2px 0 
 @keyframes arena-arrive{from{opacity:0;transform:translateY(12px) scale(.995)}to{opacity:1;transform:none}}@keyframes panel-arrive{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}@keyframes cue-ready{to{transform:translateX(-50%) scale(1.015)}}@keyframes impact-ring{0%{opacity:1;transform:scale(.35)}100%{opacity:0;transform:scale(4.2)}}
 @media(max-width:800px){.swipe-hint{bottom:92px;max-width:88%;white-space:nowrap}.swipe-hint span{display:none}.panel{background:#f7fdff}}
 @media(prefers-reduced-motion:reduce){.arena,.panel,.cue.ready{animation:none}.aim button,.actions button,.primary,.swipe-hint{transition:none}.impact-flash.show::before,.impact-flash.show::after{animation-duration:.01ms}}
+/* v1.3 mouse-only gameplay: settings remain, movement/shot buttons are removed. */
+.panel .switch,.panel>div:first-child>.help,#touchhit,.aim{display:none!important}
+.panel>div:first-child h2{margin-bottom:3px}.panel>div:first-child #drillFields{margin-top:12px}
+.panel>div:nth-child(3){background:#f0faff;border:1px solid #c0e4eb;border-radius:14px;padding:14px!important}
+.panel>div:nth-child(3) #aimText{font-weight:750;color:#155e75;margin-top:0}
+.swipe-hint.learned{opacity:.72;transform:translateX(-50%)}
+/* v1.3 reference direction: peach arena framing, violet court, cyan shuttle feedback. */
+body{background:radial-gradient(circle at 12% 4%,#fff0a8 0,transparent 26%),radial-gradient(circle at 87% 2%,#d2c5ff 0,transparent 34%),linear-gradient(145deg,#eefbff,#fff3e4 60%,#f7edff)}
+.brand span{background:linear-gradient(135deg,#d7c6ff,#a8eff7);border-color:#aa9cdd;color:#4b408b}
+.arena{box-shadow:0 27px 72px #5942a93b,0 0 0 1px #9d83d2}
+.panel{background:linear-gradient(155deg,#fffefaef,#f5efffee);border-color:#d9c8eb;box-shadow:0 20px 55px #7755a623}
+.panel>div:nth-child(3){background:#f4efff;border-color:#d9caf1}
+.panel>div:nth-child(3) #aimText{color:#584796}
+.swipe-trail{background:linear-gradient(90deg,#35d9f522,#8df0ff);box-shadow:0 0 20px #54dafaee}
+.gesture-feedback{background:#3a277cde;color:#fff5bd;border-color:#f8e39b;box-shadow:0 10px 28px #412a8790}
+.gesture-feedback[data-shot=miss]{background:#ad3d6be8;border-color:#ffc4d6;color:#fff}
+.gesture-feedback[data-shot=score]{background:#4f40a7e8;border-color:#c7f79b;color:#fff}
+.swipe-hint.learned{opacity:0;transform:translate(-50%,8px)}
