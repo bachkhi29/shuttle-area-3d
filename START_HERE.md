@@ -2,7 +2,7 @@
 
 Giải nén vào một thư mục mới để giữ bản gốc của ông.
 
-- Chơi bản mới: mở **PLAY_v0.6.1.html**, hoặc **shuttle-arena/index.html**.
+- Chơi bản tải từ nhánh GitHub: mở **shuttle-arena/index.html**. File một trang `PLAY_v0.6.1.html` chỉ có trong gói bàn giao cục bộ, không cần để chạy source trên nhánh này.
 - Đọc kết quả: **shuttle-arena/STEP4_REPORT.md**.
 - Source đang chạy: **shuttle-arena/src/main.js** (phát triển từ game_v06.js) và **src/rules.js**.
 - Cách chạy test/build file đơn: **shuttle-arena/README.md**.
