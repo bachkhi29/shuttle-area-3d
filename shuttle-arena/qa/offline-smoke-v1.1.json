@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "file": "Shuttle_Arena_3D_v1.1_MOTION_M1.html",
+  "result": {
+    "title": "Shuttle Arena 3D · v1.1 Motion M1",
+    "splitDuration": 0.66,
+    "contacts": 1,
+    "version": "v1.1 · Motion M1",
+    "qa": true
+  },
+  "externalRequests": [],
+  "runtimeErrors": [],
+  "directFileUrl": "NOT TESTED: managed browser ERR_BLOCKED_BY_ADMINISTRATOR; single-file bundle tested through loopback HTTP"
+}

@@ -1,0 +1,35 @@
+{
+  "status": "PASS",
+  "source": "05_exports/m1_split_smash_rig.glb",
+  "exportedActionNames": [
+    "ANIM_SMASH_OVERHEAD_JUMP",
+    "ANIM_SPLIT_STEP"
+  ],
+  "actions": {
+    "ANIM_SMASH_OVERHEAD_JUMP_SA3D_HumanoidRig": {
+      "frameStart": 0.0,
+      "frameEnd": 41.0,
+      "durationFrames": 41.0,
+      "fcurves": 190
+    },
+    "ANIM_SPLIT_STEP_SA3D_HumanoidRig": {
+      "frameStart": 0.0,
+      "frameEnd": 20.0,
+      "durationFrames": 20.0,
+      "fcurves": 190
+    }
+  },
+  "armatures": [
+    "SA3D_HumanoidRig"
+  ],
+  "meshCount": 20,
+  "skinnedMeshCount": 19,
+  "materials": [
+    "MAT_Racket",
+    "MAT_Shirt",
+    "MAT_Shoes",
+    "MAT_Shorts",
+    "MAT_Skin"
+  ],
+  "errors": []
+}

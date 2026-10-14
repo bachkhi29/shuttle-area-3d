@@ -39,6 +39,12 @@ with sync_playwright() as pw:
   fresh();c=run('__rally.config.match');assert c=={'interceptHeight':2.1,'errorOffset':{'side':1.1,'deep':2},'ai':{'speedCap':4.65,'reactionDelay':.22,'interceptNoise':.18}}
   return c
  check('Spec constants CONFIG.match',config)
+ def motion_contract():
+  fresh();r=run('''()=>{const q=__rally;q.state.running=false;q.launch(q.V(0,1.75,-4.5),q.V(0,.08,4.5),'player');const start=q.player.split;q.player.split=q.animTiming.splitStep*.45;q.renderActor(q.player);const split={start,footSpan:Math.abs(q.player.legs[1].foot.position.x-q.player.legs[0].foot.position.x),hip:q.player.pelvis.position.y};q.state.clock=10;q.player.split=0;q.player.shot={at:9.95,point:q.V(.45,2.25,4.12),kind:'Smash'};q.renderActor(q.player);return{split,smash:{racketY:q.player.racket.position.y,footY:q.player.legs.map(x=>x.foot.position.y),torsoYaw:q.player.torso.rotation.y}}}''')
+  assert r['split']['start']==.66 and r['split']['footSpan']>.60 and r['split']['hip']<.88
+  assert r['smash']['racketY']>2.20 and min(r['smash']['footY'])>.14 and r['smash']['torsoYaw']<0
+  return r
+ check('M1 motion contract: split-step landing and overhead smash contact pose',motion_contract)
  def rally():
   fresh();page.keyboard.down('Space');run('__rally.advance(24)');page.keyboard.up('Space');run('__rally.draw()')
   c=run('__rally.state.contacts');assert len(c)>=8;assert all(x['quality']=='clean' for x in c)

@@ -1,4 +1,4 @@
-// v1.0 Official MVP — production baseline built from the accepted v0.7 Match MVP.
+// v1.1 Motion M1 — Official MVP gameplay plus reference-guided split-step/smash motion.
 'use strict';
 (() => {
 const $=id=>document.getElementById(id),clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t;
@@ -68,6 +68,8 @@ function winsMatch(a,b){return winsGame(a,b,11,15)}
 function winsGame(a,b,target,cap){return (a>=target&&a-b>=2)||a===cap}
 const RULESETS={arcade11:{label:'Arcade 11',target:11,cap:15,games:1},preview15:{label:'2027 Preview 15',target:15,cap:21,games:2},classic21:{label:'Classic 21',target:21,cap:30,games:2}};
 const AI_LEVELS={rookie:{label:'Dễ · Rookie',reaction:.60,noise:.40,speed:4.05,errMul:1.35},inter:{label:'Thường · Intermediate',reaction:.22,noise:.18,speed:4.65},expert:{label:'Khó · Expert',reaction:.18,noise:.10,speed:4.65,errMul:.60}};
+const ANIM_TIMING={splitStep:.66,smashFollow:.42};
+const smooth01=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
 function serveSideSign(server,score){const dir=server==='player'?1:-1;return score%2===0?dir:-dir}
 function isInSingles(x,z,sideSign){return Math.abs(x)<=2.59&&z*sideSign>0&&Math.abs(z)<=6.70}
 // === END RULES ===
@@ -95,7 +97,7 @@ function velocity(b,t){let e=Math.exp(-DRAG*t);return V(b.v.x*e,(b.v.y+GRAVITY/D
 function trajectory(start,end,T){let f=(1-Math.exp(-DRAG*T))/DRAG;return {start:start.clone(),end:end.clone(),v:V((end.x-start.x)/f,(end.y-start.y+GRAVITY*T/DRAG)/f-GRAVITY/DRAG,(end.z-start.z)/f),T,t:0};}
 function planIntercept(b,side){for(let t=b.T*.38;t<=b.T;t+=.007){let p=sample(b,t);if(velocity(b,t).y<0&&p.y<(M.active?CONFIG.match.interceptHeight:1.58)&&p.y>.55&&p.z*(side==='player'?1:-1)>.75){return {t,point:p,x:clamp(p.x-(side==='player'?.22:-.22),-2.43,2.43),z:clamp(p.z+(side==='player'?.42:-.42),side==='player'?.7:-6.3,side==='player'?6.3:-.7)}}}let p=sample(b,b.T*.9);return {t:b.T*.9,point:p,x:p.x,z:p.z};}
 function netCrossY(b,start){let lo=0,hi=b.T;for(let j=0;j<30;j++){let t=(lo+hi)/2,p=sample(b,t);if((p.z>0)===(start.z>0))lo=t;else hi=t}return sample(b,(lo+hi)/2).y}
-function launch(start,end,side,opt){opt=opt||{};let T=opt.T||2.03;const clearY=opt.clear||1.82;let b;for(let i=0;i<12;i++){b=trajectory(start,end,T);if(opt.fixedT)break;if(netCrossY(b,start)>clearY)break;T+=.12}b.side=side;b.intercept=planIntercept(b,side);if(M.active&&side==='ai'){const lc=levelCfg();M.aiMoveAt=S.clock+lc.reaction;b.intercept.x=clamp(b.intercept.x+M.aiNoise,-2.43,2.43)}const recvA=side==='player'?player:opponent;b.travel=Math.hypot(recvA.x-b.intercept.x,recvA.z-b.intercept.z);b.id=S.feeds*1000+S.hits;b.rallyId=M.active?M.rallyId:null;b.previous=start.clone();S.ball=b;S.wait=0;trailPoints.forEach(p=>p.copy(start));opponent.split=side==='ai'?.2:0;player.split=side==='player'?.2:0;}
+function launch(start,end,side,opt){opt=opt||{};let T=opt.T||2.03;const clearY=opt.clear||1.82;let b;for(let i=0;i<12;i++){b=trajectory(start,end,T);if(opt.fixedT)break;if(netCrossY(b,start)>clearY)break;T+=.12}b.side=side;b.intercept=planIntercept(b,side);if(M.active&&side==='ai'){const lc=levelCfg();M.aiMoveAt=S.clock+lc.reaction;b.intercept.x=clamp(b.intercept.x+M.aiNoise,-2.43,2.43)}const recvA=side==='player'?player:opponent;b.travel=Math.hypot(recvA.x-b.intercept.x,recvA.z-b.intercept.z);b.id=S.feeds*1000+S.hits;b.rallyId=M.active?M.rallyId:null;b.previous=start.clone();S.ball=b;S.wait=0;trailPoints.forEach(p=>p.copy(start));opponent.split=side==='ai'?ANIM_TIMING.splitStep:0;player.split=side==='player'?ANIM_TIMING.splitStep:0;}
 const SHOTS={standard:{label:'Tiêu chuẩn'},drop:{label:'Drop / Net · J'},clear:{label:'Clear / Lift · K'},smash:{label:'Smash / Drive · L'}};
 function setShotType(t){S.shotType=t;refreshAimText();event('Chọn cú: '+SHOTS[t].label)}
 function shotFor(side,p,aimLane,inTravel){
@@ -141,6 +143,7 @@ function contact(a){
   // AI aim is relative to its own view of the net; mirror into world X.
   const lane=a.side==='player'?S.aim:-M.aiAim;
   const sh=shotFor(a.side,p,lane,b.travel);
+  a.shot.kind=sh.name;
   const end=Rules.applyStretchedError(sh.end,recorded,lane,a.side);
   recorded.quality=Rules.isCleanContact(recorded.gap,recorded.height)?'clean':'stretched';
   recorded.aim=lane;recorded.target={...end};recorded.rallyId=M.rallyId;
@@ -157,7 +160,7 @@ function contact(a){
  // Training retains the v0.6 shot choices and v0.3 feed/motor behaviour.
  if(a.side==='player'){
   S.hits++;S.rally++;S.best=Math.max(S.best,S.rally);S.queuedUntil=-1;
-  const sh=shotFor('player',p,S.aim,b.travel);S.lastShot=sh.name;
+  const sh=shotFor('player',p,S.aim,b.travel);a.shot.kind=sh.name;S.lastShot=sh.name;
   event(sh.name==='Tiêu chuẩn'?'Đánh trúng · về vị trí sẵn sàng':'Đánh trúng · '+sh.name);
   launch(p,V(sh.end.x,.08,sh.end.z),'ai',sh.opt);S.shotType='standard';refreshAimText();
  }else launch(p,feedTarget(),'player');
@@ -175,10 +178,21 @@ function tick(dt){if(!S.running)return;S.clock+=dt;
  if(b.side==='player'&&intent()&&contactWindow(player,b)){contact(player);return}if(b.side==='ai'&&contactWindow(opponent,b)&&(!M.active||isInSingles(b.end.x,b.end.z,-1))){contact(opponent);return}if(b.t>=b.T||p.y<=.09){if(M.active){const sideSign=b.side==='player'?1:-1;if(!isInSingles(b.end.x,b.end.z,sideSign)){pointEnd(b.side,'OUT')}else{pointEnd(b.side==='player'?'ai':'player',M.receiverInRange?'WHIFF':'FLOOR_IN')}}else{drop(b.side==='player'?(intent()?'Cầu ngoài tầm với · tới vòng xanh nhạt':'Cầu rơi · giữ Space sớm hơn ở pha tới'):'Đối thủ chưa tới kịp · pha mới')}}
 }
 function animateFeet(a,dt){let moving=a.speed>.15;if(moving)a.phase+=dt*(1.8+a.speed*.25);let sign=a.side==='ai'?-1:1;for(let i=0;i<2;i++){let f=a.feet[i],phase=(a.phase+i*.5)%1,swing=moving&&phase<.48;let rest=V(a.x+sign*(i===0?-.19:.19),.06,a.z+(i===0?.06:-.06));if(swing&&!f.swing){f.from.copy(f.world);f.to.copy(rest).add(V(a.vx*.11,0,a.vz*.11))}if(swing){let u=phase/.48;f.world.copy(f.from).lerp(f.to,u*u*(3-2*u));f.world.y=.06+Math.sin(u*Math.PI)*.12}else if(!moving){f.world.lerp(rest,Math.min(1,dt*8));f.world.y=.06}else if(Math.hypot(f.world.x-a.x,f.world.z-a.z)>.62){f.world.copy(rest)}f.swing=swing;}}
-function renderActor(a){let group=a.group;group.position.set(a.x,0,a.z);group.updateMatrixWorld(true);let split=a.split>0?Math.sin(a.split/.2*Math.PI)*.055:0,hipY=.91-split,lean=Math.min(.10,a.speed*.013);a.torso.position.set(0,hipY+.31,-lean);a.torso.rotation.x=-lean;a.pelvis.position.set(0,hipY-.025,0);a.head.position.set(0,hipY+.84,-lean-.035);a.hair.position.set(0,hipY+.916,-lean-.025);setBone(a.neck,V(0,hipY+.57,-lean),V(0,hipY+.72,-lean));
- for(let i=0;i<2;i++){let leg=a.legs[i],foot=group.worldToLocal(a.feet[i].world.clone()),hip=V(i===0?-.14:.14,hipY-.06,0),ankle=foot.clone().add(V(0,.05,.04)),knee=bend(hip,ankle,.43,.45,V(0,0,-1));setBone(leg.upper,hip,knee);setBone(leg.lower,knee,ankle);setBone(leg.sock,ankle,ankle.clone().lerp(knee,.3));leg.foot.position.copy(foot);leg.foot.position.z-=.035;}
- let ls=V(-.23,hipY+.54,-lean),rs=V(.23,hipY+.54,-lean),leftHand=V(-.34,hipY+.37,-.32),rightHand=V(.31,hipY+.37,-.28),racketCenter=V(.37,hipY+.61,-.65),shot=a.shot,elapsed=shot?S.clock-shot.at:99;
- if(elapsed<.42){let local=group.worldToLocal(shot.point.clone()),hold=elapsed<.045?0:clamp((elapsed-.045)/.375,0,1);let follow=local.clone().add(V(-.18,-.32,-.20));racketCenter.copy(local).lerp(follow,Math.sin(hold*Math.PI*.5));let fromShoulder=racketCenter.clone().sub(rs).normalize();rightHand.copy(racketCenter).addScaledVector(fromShoulder,-.53);leftHand.set(-.42,hipY+.35,.10)}else if(S.ball?.side===a.side&&S.ball.T-S.ball.t<.9){rightHand.set(.42,hipY+.57,.07);racketCenter.set(.47,hipY+1.07,.1);leftHand.set(-.42,hipY+.43,-.27);
+function renderActor(a){
+ let group=a.group,shot=a.shot,elapsed=shot?S.clock-shot.at:99,smashing=shot?.kind==='Smash'&&elapsed<ANIM_TIMING.smashFollow;
+ let splitT=a.split>0?1-a.split/ANIM_TIMING.splitStep:1;
+ let splitHop=a.split>0?Math.sin(Math.PI*clamp((splitT-.16)/.45,0,1))*.075:0;
+ let splitLand=a.split>0?smooth01((splitT-.43)/.16)*(1-smooth01((splitT-.82)/.18)):0;
+ let splitCrouch=a.split>0?(.025*smooth01(splitT/.18)+.055*splitLand):0;
+ let smashLift=smashing ? .11*(1-smooth01(elapsed/.34)) : 0;
+ group.position.set(a.x,0,a.z);group.updateMatrixWorld(true);
+ let hipY=.91+splitHop+smashLift-splitCrouch,lean=Math.min(.10,a.speed*.013);
+ a.torso.position.set(0,hipY+.31,-lean);a.torso.rotation.x=-lean+(smashing ? .10*smooth01(elapsed/.2) : 0);a.torso.rotation.y=smashing ? -.30*smooth01(elapsed/.28) : 0;
+ a.pelvis.position.set(0,hipY-.025,0);a.pelvis.rotation.y=smashing ? .18*smooth01(elapsed/.3) : 0;
+ a.head.position.set(0,hipY+.84,-lean-.035);a.hair.position.set(0,hipY+.916,-lean-.025);setBone(a.neck,V(0,hipY+.57,-lean),V(0,hipY+.72,-lean));
+ for(let i=0;i<2;i++){let leg=a.legs[i],foot=group.worldToLocal(a.feet[i].world.clone());if(a.split>0){foot.x=(i===0?-1:1)*(.19+.15*splitLand);foot.y=.06+splitHop;foot.z=i===0?.055:-.055}if(smashing)foot.y+=smashLift;let hip=V(i===0?-.14:.14,hipY-.06,0),ankle=foot.clone().add(V(0,.05,.04)),knee=bend(hip,ankle,.43,.45,V(0,0,-1));setBone(leg.upper,hip,knee);setBone(leg.lower,knee,ankle);setBone(leg.sock,ankle,ankle.clone().lerp(knee,.3));leg.foot.position.copy(foot);leg.foot.position.z-=.035;}
+ let ls=V(-.23,hipY+.54,-lean),rs=V(.23,hipY+.54,-lean),leftHand=V(-.34,hipY+.37,-.32),rightHand=V(.31,hipY+.37,-.28),racketCenter=V(.37,hipY+.61,-.65);
+ if(elapsed<ANIM_TIMING.smashFollow){let local=group.worldToLocal(shot.point.clone()),hold=elapsed<.045?0:smooth01((elapsed-.045)/(ANIM_TIMING.smashFollow-.045));let follow=shot.kind==='Smash'?V(-.26,hipY+.43,.12):local.clone().add(V(-.18,-.32,-.20));racketCenter.copy(local).lerp(follow,Math.sin(hold*Math.PI*.5));let fromShoulder=racketCenter.clone().sub(rs).normalize();rightHand.copy(racketCenter).addScaledVector(fromShoulder,-.53);leftHand.set(-.42,hipY+.35,.10)}else if(S.ball?.side===a.side&&S.ball.T-S.ball.t<.9){rightHand.set(.42,hipY+.57,.07);racketCenter.set(.47,hipY+1.07,.1);leftHand.set(-.42,hipY+.43,-.27);
  if(a.side==='ai'||intent()){for(let lead=.008;lead<=.18;lead+=.008){let future=sample(S.ball,S.ball.t+lead);if(velocity(S.ball,S.ball.t+lead).y<.4&&range(a,future)){let local=group.worldToLocal(future),blend=1-lead/.18;racketCenter.lerp(local,blend*blend*(3-2*blend));rightHand.copy(racketCenter).addScaledVector(racketCenter.clone().sub(rs).normalize(),-.53);break}}}}
  let elbowL=bend(ls,leftHand,.31,.30,V(-1,-.3,0)),elbowR=bend(rs,rightHand,.32,.32,V(.5,-.6,.6));[ [ls,elbowL,leftHand],[rs,elbowR,rightHand] ].forEach((p,i)=>{setBone(a.arms[i].upper,p[0],p[1]);setBone(a.arms[i].lower,p[1],p[2]);a.arms[i].hand.position.copy(p[2])});a.racket.position.copy(racketCenter);a.racket.quaternion.setFromUnitVectors(V(0,1,0),racketCenter.clone().sub(rightHand).normalize());
 }
@@ -217,5 +231,5 @@ document.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{b
 function resize(){let r=$('view').getBoundingClientRect();camera.aspect=r.width/r.height;camera.updateProjectionMatrix();renderer.setSize(r.width,r.height,false)}window.addEventListener('resize',resize);resize();
 let previous=performance.now(),acc=0;function frame(now){let dt=Math.min(.1,(now-previous)/1000);previous=now;if(S.running&&!(location.hash==='#qa'&&new URLSearchParams(location.search).has('manual'))){acc+=dt*S.pace;while(acc>=FIXED){tick(FIXED);acc-=FIXED}}else acc=0;draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 // Deterministic QA hook is opt-in. It never runs in ordinary play.
-if(location.hash==='#qa')window.__rally={state:S,match:M,config:CONFIG,rules:{winsMatch,winsGame,serveSideSign,isInSingles,applyStretchedError:Rules.applyStretchedError,isCleanContact:Rules.isCleanContact,RULESETS,AI_LEVELS},player,opponent,reset,tick,draw,move,levelCfg,setupAiForRally,trajectory,V,aim,sample,range,reachable,contactWindow,launch,contact,feed,renderer,camera,scene,advance(seconds){for(let t=0;t<seconds;t+=FIXED)tick(FIXED)},setRunning,arm,startMatch,startTraining,nextGame,pointEnd,doServe,SHOTS,shotFor,setShotType,netCrossY};
+if(location.hash==='#qa')window.__rally={state:S,match:M,config:CONFIG,animTiming:ANIM_TIMING,rules:{winsMatch,winsGame,serveSideSign,isInSingles,applyStretchedError:Rules.applyStretchedError,isCleanContact:Rules.isCleanContact,RULESETS,AI_LEVELS},player,opponent,reset,tick,draw,move,renderActor,levelCfg,setupAiForRally,trajectory,V,aim,sample,range,reachable,contactWindow,launch,contact,feed,renderer,camera,scene,advance(seconds){for(let t=0;t<seconds;t+=FIXED)tick(FIXED)},setRunning,arm,startMatch,startTraining,nextGame,pointEnd,doServe,SHOTS,shotFor,setShotType,netCrossY};
 })();

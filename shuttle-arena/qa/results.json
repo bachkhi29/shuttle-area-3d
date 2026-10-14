@@ -21,6 +21,25 @@
     }
   },
   {
+    "name": "M1 motion contract: split-step landing and overhead smash contact pose",
+    "status": "PASS",
+    "evidence": {
+      "split": {
+        "start": 0.66,
+        "footSpan": 0.6331249999999998,
+        "hip": 0.844098998230685
+      },
+      "smash": {
+        "racketY": 2.2493304063176183,
+        "footY": [
+          0.15856299613270897,
+          0.15856299613270897
+        ],
+        "torsoYaw": -0.02528243440233303
+      }
+    }
+  },
+  {
     "name": "Held Space + assist produces clean rallies for both actors",
     "status": "PASS",
     "evidence": {
@@ -660,6 +679,18 @@
         true,
         true
       ]
+    }
+  },
+  {
+    "name": "v1 settings persist with a versioned localStorage schema",
+    "status": "PASS",
+    "evidence": {
+      "assist": false,
+      "sound": true,
+      "drill": "mixed",
+      "pace": 1,
+      "ruleset": "classic21",
+      "ai": "expert"
     }
   },
   {
