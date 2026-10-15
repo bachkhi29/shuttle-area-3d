@@ -12,8 +12,9 @@ import bpy
 
 
 ROOT = Path(__file__).resolve().parents[1]
-GLB = ROOT / "05_exports" / "m1_split_smash_rig.glb"
-REPORT = ROOT / "06_qc" / "m1_glb_validation.json"
+args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+GLB = ROOT / (args[0] if args else "05_exports/m1_split_smash_rig.glb")
+REPORT = ROOT / (args[1] if len(args) > 1 else "06_qc/m1_glb_validation.json")
 EXPECTED_ACTIONS = {
     "ANIM_SPLIT_STEP": 20,
     "ANIM_SMASH_OVERHEAD_JUMP": 41,

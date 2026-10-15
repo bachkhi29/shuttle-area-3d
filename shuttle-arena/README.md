@@ -1,8 +1,8 @@
-# Shuttle Arena 3D v1.3 — Mouse Edition
+# Shuttle Arena 3D v1.4 — Character Edition
 
 Mở **`index.html`** bằng Chrome/Edge để chơi offline. Không cần npm, build, backend hay API key. Toàn bộ Three.js r160 được đóng gói tại `vendor/three.min.js`.
 
-File một trang là `Shuttle_Arena_3D_v1.3_MOUSE_EDITION.html`, không tải tài nguyên ngoài. Để tạo lại, chạy `python tools/build_offline.py ../Shuttle_Arena_3D_v1.3_MOUSE_EDITION.html`. Bản source `index.html` dùng ba file local bên cạnh; nếu di chuyển riêng `index.html`, game sẽ báo đúng lỗi thiếu Three.js thay vì báo nhầm WebGL.
+File một trang là `Shuttle_Arena_3D_v1.4_CHARACTER_EDITION.html`, không tải tài nguyên ngoài. Để tạo lại, chạy `python tools/build_offline.py ../Shuttle_Arena_3D_v1.4_CHARACTER_EDITION.html`. Bản source `index.html` dùng ba file local bên cạnh; nếu di chuyển riêng `index.html`, game sẽ báo đúng lỗi thiếu Three.js thay vì báo nhầm WebGL.
 
 Nếu muốn dùng server local: `python -m http.server 8000` trong thư mục này, rồi mở `http://127.0.0.1:8000`.
 
@@ -10,7 +10,11 @@ Nếu muốn dùng server local: `python -m http.server 8000` trong thư mục n
 
 Runtime phát triển trực tiếp từ `Shuttle_Arena_3D_v0.6_Package/game_v06.js` ông đã chơi thử; không lấy runtime v0.4 cũ làm nền. `index.html` là điểm mở bản mới. Gói v0.6 và hai baseline v0.3 trong dự án được giữ nguyên để đối chiếu. Các fragment v0.4 không còn được nạp đã chuyển vào `legacy/v0.4/`.
 
-Đây là playtest v1.3 theo hướng stylized arcade: Quick Match, Training, ba luật, ba mức AI và Shot System chơi trọn vẹn; avatar runtime có split-step/overhead smash procedural. Sân tím, hậu cảnh tông đào, vệt cầu cyan và phản hồi contact lấy cảm hứng nhịp chơi từ video tham khảo do người dùng gửi, đều được dựng mới trong dự án. Giữ Three.js/JavaScript, vật lý DRAG=0.35, GRAVITY=9.81 và fixed timestep=1/120. Cài đặt được lưu cục bộ bằng schema `shuttle-arena.settings.v1`. Xem [GAMEPLAY_MOUSE_V1.3.md](GAMEPLAY_MOUSE_V1.3.md) để biết quy tắc gameplay mới.
+Đây là bản chơi được v1.4 theo hướng stylized arcade: Quick Match, Training, ba luật, ba mức AI và Shot System chơi trọn vẹn. Nhân vật chính nay theo ảnh tham khảo của người dùng: đầu lớn, mắt rõ, tóc xanh đậm/cyan, áo cyan với viền lime/coral, quần navy, giày trắng và vợt nhiều màu. Đối thủ dùng dáng tương ứng với bảng màu riêng. Cả hai vẫn có split-step, chạy đón và smash; tạo hình mới không đổi kích thước hitbox hoặc luật contact. Sân tím, hậu cảnh tông đào, vệt cầu cyan và phản hồi contact đều được dựng mới trong dự án. Giữ Three.js/JavaScript, vật lý DRAG=0.35, GRAVITY=9.81 và fixed timestep=1/120. Cài đặt được lưu cục bộ bằng schema `shuttle-arena.settings.v1`. Xem [GAMEPLAY_MOUSE_V1.3.md](GAMEPLAY_MOUSE_V1.3.md) để biết quy tắc gameplay chuột.
+
+## Nhân vật 3D và file Blender
+
+Runtime dùng mesh 3D tự dựng trong Three.js để chân, tay và vợt tiếp tục bám vị trí tiếp xúc cầu theo từng frame. File Blender chỉnh sửa được là `../animation_research/04_blender/sa3d_stylized_avatar_v1.blend`; bản xuất GLB là `../animation_research/05_exports/sa3d_stylized_avatar_v1.glb`. GLB giữ armature và hai clip split-step/smash cho giai đoạn chuyển sang asset pipeline; game v1.4 hiển thị tạo hình tương ứng trực tiếp bằng Three.js. Chạy lại nguồn Blender bằng `blender --background --python ../animation_research/tools/build_reference_avatar.py`.
 
 ## Điều khiển
 
@@ -42,7 +46,7 @@ python test/browser.py
 
 Browser test cần Python `playwright` và Chromium (mặc định `/usr/bin/chromium`; đổi qua biến `CHROMIUM`). Tự mở server chỉ trên `127.0.0.1`, không công bố ra Internet. Đặt `QA_OUTPUT` nếu muốn đổi thư mục bằng chứng. Bộ parity cần giữ các file baseline ở thư mục cha như trong ZIP bàn giao.
 
-Browser suite kiểm tra thao tác Pointer Events thật trên canvas, quỹ đạo vuốt xuống, rally Drop/Smash với AI, motion contract, các kịch bản luật, Training parity và Match. Xem `MOUSE_EDITION_REPORT.md` để biết kết quả chạy gần nhất.
+Browser suite kiểm tra thao tác Pointer Events thật trên canvas, quỹ đạo vuốt xuống, rally Drop/Smash với AI, motion contract, các kịch bản luật, Training parity và Match. Xem `CHARACTER_EDITION_REPORT.md` để biết kết quả chạy gần nhất.
 
 Mở `index.html#qa` để dùng `window.__rally`; thêm `?manual=1#qa` để chỉ advance bằng hook, vẫn render. Hook có state, match, config, rules, tick/advance, actors, range/reachable/contact, launch/trajectory, motor, startMatch/startTraining. Chế độ bình thường không phơi hook.
 

@@ -11,6 +11,8 @@ Video gốc không được đưa lên GitHub. Chưa có xác nhận quyền ph�
 
 M1 hiện có một mannequin tự dựng, armature 19 mesh skinned, racket socket và hai action. GLB đã import ngược thành công. Game v1.1 dùng cùng timing/pose contract cho avatar procedural để người chơi nhìn thấy split-step và smash ngay. Việc thay hẳn hai avatar bằng GLB và blend qua `AnimationMixer` thuộc bước integration tiếp theo.
 
+Avatar stylized v1.4 được bổ sung theo ảnh tham khảo mới: `04_blender/sa3d_stylized_avatar_v1.blend` để chỉnh trong Blender, `05_exports/sa3d_stylized_avatar_v1.glb` để trao đổi asset, ảnh `06_qc/sa3d_stylized_avatar_v1.png`. Asset mới dùng armature M1 với hai action split-step/smash và đã import GLB ngược thành công (xem `06_qc/sa3d_stylized_avatar_validation.json`). Game v1.4 hiển thị phiên bản tạo hình tương ứng bằng mesh Three.js, để pose tiếp xúc vẫn do mô phỏng điều khiển. Dựng lại bằng `blender --background --python animation_research/tools/build_reference_avatar.py`.
+
 Thư mục:
 
 - `00_sources/`: manifest nguồn và tình trạng quyền sử dụng.
