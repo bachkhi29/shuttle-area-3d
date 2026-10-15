@@ -8,7 +8,7 @@ from functools import partial
 from threading import Thread
 import json, os, traceback
 from playwright.sync_api import sync_playwright
-ROOT=Path(__file__).resolve().parents[2]
+ROOT=Path(__file__).resolve().parents[1]
 OUT=Path(os.environ.get('QA_OUTPUT',str(ROOT/'work/qa')));OUT.mkdir(parents=True,exist_ok=True)
 class Handler(SimpleHTTPRequestHandler):
  def log_message(self,*args): pass
@@ -27,7 +27,7 @@ with sync_playwright() as pw:
  # Deterministic stepping instead of racing requestAnimationFrame.
  context.add_init_script('window.requestAnimationFrame=()=>0')
  page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
- page.goto(BASE+'/shuttle-arena/index.html#qa');page.wait_for_function('!!window.__rally')
+ page.goto(BASE+'/index.html#qa');page.wait_for_function('!!window.__rally')
  def run(js):return page.evaluate(js)
  def fresh():
   run("()=>{const q=__rally;q.startMatch('arcade11','inter');q.state.assist=true;q.state.aim=0;q.state.shotType='standard';q.state.keys.clear();q.state.held=false;q.draw()}")
@@ -205,7 +205,7 @@ with sync_playwright() as pw:
  check('Full Arcade 11 match through actual simulation + three rematches',fullmatch)
  # Compare deterministic Training trajectories with both original source versions.
  def training_parity():
-  paths=['/Shuttle_Arena_3D_Rally_Lab_v0.3.html','/Shuttle_Arena_3D_v0.6_Package/Shuttle_Arena_3D_v0.6.html','/shuttle-arena/index.html']
+  paths=['/test/fixtures/baseline_v0.3.html','/test/fixtures/baseline_v0.6.html','/index.html']
   snapshots=[]
   for path in paths:
    p=context.new_page();p.goto(BASE+path+'#qa');p.wait_for_function('!!window.__rally')
@@ -239,7 +239,7 @@ with sync_playwright() as pw:
  check('Narrow layout has no horizontal overflow',mobile)
  def missing_vendor_message():
   broken=context.new_page();broken.route('**/vendor/three.min.js',lambda route:route.abort())
-  broken.goto(BASE+'/shuttle-arena/index.html');broken.wait_for_load_state('domcontentloaded')
+  broken.goto(BASE+'/index.html');broken.wait_for_load_state('domcontentloaded')
   message=broken.locator('#intro').inner_text();disabled=[broken.locator('#begin').is_disabled(),broken.locator('#beginMatch').is_disabled()]
   assert 'Three.js' in message and 'không phải lỗi WebGL' in message and all(disabled)
   broken.close();return {'message':message,'launchButtonsDisabled':disabled}
